@@ -20,6 +20,7 @@ import {
   Users,
   X,
 } from 'lucide-react'
+import CampusMap from './CampusMap.jsx'
 
 const navigation = [
   { label: 'Dashboard', icon: LayoutDashboard },
@@ -641,6 +642,8 @@ function App() {
         <div className="mx-auto max-w-[1440px] px-4 py-7 sm:px-7 sm:py-9 lg:px-10">
           {activePage === 'Dashboard' ? (
             <Dashboard searchTerm={searchTerm} onNavigate={navigateTo} />
+          ) : activePage === 'Campus Map' ? (
+            <CampusMap />
           ) : (
             <PlaceholderPage page={activePage} />
           )}

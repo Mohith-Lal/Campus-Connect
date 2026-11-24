@@ -1,0 +1,2 @@
+export const MAX_GPS_ACCURACY_METERS = 30
+export const MAX_GPS_NETWORK_DISTANCE_METERS = 30
