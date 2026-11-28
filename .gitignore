@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+.gemini
+.codebuddy
+.windsurfrules
+.mcp.json
+.antideploy.json
+CODEBUDDY.md
+GEMINI.md

@@ -1,661 +1,1098 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { AnimatePresence, MotionConfig, motion } from 'motion/react'
 import {
-  ArrowDownRight,
   ArrowRight,
   ArrowUpRight,
-  BookOpen,
+  Award,
   Building2,
   CalendarDays,
-  Check,
-  ChevronDown,
+  CheckCircle2,
   Clock3,
+  Coffee,
   Compass,
-  GraduationCap,
-  LayoutDashboard,
   MapPin,
-  Menu,
   Megaphone,
-  Search,
-  Settings,
+  Sparkles,
   Users,
-  X,
 } from 'lucide-react'
 import CampusMap from './CampusMap.jsx'
-
-const navigation = [
-  { label: 'Dashboard', icon: LayoutDashboard },
-  { label: 'Campus Map', icon: MapPin },
-  { label: 'Faculty', icon: Users },
-  { label: 'Events', icon: CalendarDays },
-  { label: 'Announcements', icon: Megaphone },
-]
-
-const events = [
-  {
-    day: '24',
-    month: 'OCT',
-    category: 'WORKSHOP',
-    title: 'Designing for the real world',
-    time: '10:30 AM – 12:00 PM',
-    location: 'Innovation Lab, Block C',
-    color: 'blue',
-  },
-  {
-    day: '26',
-    month: 'OCT',
-    category: 'CAMPUS LIFE',
-    title: 'Fall Fest ’24',
-    time: '4:00 PM – 9:00 PM',
-    location: 'The Quad',
-    color: 'orange',
-  },
-  {
-    day: '28',
-    month: 'OCT',
-    category: 'ACADEMIC',
-    title: 'Research & ideas symposium',
-    time: '1:00 PM – 3:30 PM',
-    location: 'North Lecture Hall',
-    color: 'purple',
-  },
-]
-
-const announcements = [
-  {
-    category: 'ACADEMIC',
-    title: 'Registration for spring semester is now open',
-    time: '2 hours ago',
-    icon: BookOpen,
-    tone: 'blue',
-  },
-  {
-    category: 'CAMPUS UPDATE',
-    title: 'Library hours extended during midterms',
-    time: 'Yesterday',
-    icon: Building2,
-    tone: 'green',
-  },
-  {
-    category: 'STUDENT LIFE',
-    title: 'Applications open for student ambassadors',
-    time: 'Oct 20, 2024',
-    icon: GraduationCap,
-    tone: 'orange',
-  },
-]
+import { AuthGate } from './components/AuthGate.jsx'
+import { CampusBackdrop } from './components/CampusBackdrop.jsx'
+import { CommandPalette } from './components/CommandPalette.jsx'
+import {
+  FacultyDashboard,
+  FacultyNotificationsPage,
+  FacultyTimetablePage,
+} from './components/FacultyWorkspace.jsx'
+import {
+  AnnouncementsPage,
+  EventsPage,
+  FacultyPage,
+  SettingsPage,
+} from './components/PortalPages.jsx'
+import {
+  BlurText,
+  CountUpNumber,
+  MagneticButton,
+  PageTransition,
+  SpotlightCard,
+} from './components/ReactBits.jsx'
+import { Reveal, RevealGroup, RevealItem } from './components/motion/Reveal.jsx'
+import { SectionHeader } from './components/motion/Tilt.jsx'
+import { Sidebar } from './components/shell/Sidebar.jsx'
+import { TopBar } from './components/shell/TopBar.jsx'
+import {
+  campusEvents,
+  campusTickerItems,
+  initialAnnouncements,
+  initialFacultyDirectory,
+  initialUrgentAlerts,
+  studentProfile,
+  todayClasses,
+} from './data/campusPortalData.js'
 
 const quickLinks = [
   {
-    label: 'Campus map',
-    detail: 'Find your way around',
+    label: 'Campus Navigator',
+    detail: 'GPS walking routes & blocks',
     icon: Compass,
-    color: 'blue',
+    tone: 'blue',
+    spotlight: 'rgba(37, 99, 235, 0.14)',
     page: 'Campus Map',
   },
   {
-    label: 'Faculty directory',
-    detail: 'Get to know your faculty',
+    label: 'Faculty Timetables',
+    detail: 'Live cabin status & urgent alerts',
     icon: Users,
-    color: 'purple',
+    tone: 'violet',
+    spotlight: 'rgba(124, 58, 237, 0.14)',
     page: 'Faculty',
   },
   {
-    label: 'Events',
-    detail: 'What’s happening on campus',
+    label: 'Events & Fests',
+    detail: 'Reserve seats & workshops',
     icon: CalendarDays,
-    color: 'orange',
+    tone: 'amber',
+    spotlight: 'rgba(245, 158, 11, 0.14)',
     page: 'Events',
   },
   {
-    label: 'Announcements',
-    detail: 'The latest campus updates',
+    label: 'Notice Board',
+    detail: 'Deadlines & library updates',
     icon: Megaphone,
-    color: 'green',
+    tone: 'emerald',
+    spotlight: 'rgba(16, 185, 129, 0.14)',
     page: 'Announcements',
   },
 ]
 
-function Sidebar({ activePage, onNavigate, isOpen, onClose }) {
-  return (
-    <>
-      {isOpen && (
-        <button
-          aria-label="Close navigation menu"
-          className="fixed inset-0 z-30 bg-slate-950/30 backdrop-blur-[2px] lg:hidden"
-          onClick={onClose}
-        />
-      )}
-      <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col border-r border-slate-200 bg-white transition-transform duration-200 lg:translate-x-0 ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <div className="flex h-[76px] items-center justify-between border-b border-slate-100 px-6">
-          <button
-            className="flex items-center gap-3 text-left"
-            onClick={() => onNavigate('Dashboard')}
-          >
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm shadow-blue-200">
-              <Building2 size={19} strokeWidth={2.2} />
-            </span>
-            <span>
-              <span className="block text-[15px] font-bold tracking-tight text-slate-900">
-                campus<span className="text-blue-600">connect</span>
-              </span>
-              <span className="mt-0.5 block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                Student portal
-              </span>
-            </span>
-          </button>
-          <button
-            aria-label="Close navigation menu"
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 lg:hidden"
-            onClick={onClose}
-          >
-            <X size={18} />
-          </button>
-        </div>
-
-        <div className="px-4 pt-8">
-          <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
-            Workspace
-          </p>
-          <nav aria-label="Main navigation" className="space-y-1">
-            {navigation.map(({ label, icon: Icon }) => (
-              <button
-                key={label}
-                aria-current={activePage === label ? 'page' : undefined}
-                className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium transition ${
-                  activePage === label
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-                }`}
-                onClick={() => onNavigate(label)}
-              >
-                <Icon
-                  size={18}
-                  strokeWidth={activePage === label ? 2.2 : 1.8}
-                  className={
-                    activePage === label
-                      ? 'text-blue-600'
-                      : 'text-slate-400 group-hover:text-slate-600'
-                  }
-                />
-                {label}
-                {label === 'Announcements' && (
-                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-blue-500" />
-                )}
-              </button>
-            ))}
-          </nav>
-        </div>
-
-        <div className="mt-8 px-4">
-          <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
-            Preferences
-          </p>
-          <button
-            aria-current={activePage === 'Settings' ? 'page' : undefined}
-            className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium transition ${
-              activePage === 'Settings'
-                ? 'bg-blue-50 text-blue-700'
-                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-            }`}
-            onClick={() => onNavigate('Settings')}
-          >
-            <Settings size={18} className="text-slate-400 group-hover:text-slate-600" />
-            Settings
-          </button>
-        </div>
-
-        <div className="mt-auto border-t border-slate-100 p-4">
-          <button className="flex w-full items-center gap-3 rounded-xl p-2 text-left transition hover:bg-slate-50">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-700 ring-2 ring-white">
-              JD
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-[12px] font-semibold text-slate-800">
-                Jordan Davis
-              </span>
-              <span className="mt-0.5 block truncate text-[11px] text-slate-400">
-                Computer Science · Year 2
-              </span>
-            </span>
-            <ChevronDown size={15} className="text-slate-400" />
-          </button>
-        </div>
-      </aside>
-    </>
-  )
+const toneStyles = {
+  blue: 'bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-300',
+  violet: 'bg-iris-50 text-iris-600 dark:bg-iris-500/15 dark:text-iris-300',
+  amber: 'bg-sun-50 text-sun-600 dark:bg-sun-500/15 dark:text-sun-300',
+  emerald: 'bg-mint-50 text-mint-600 dark:bg-mint-500/15 dark:text-mint-300',
 }
 
-function SectionHeading({ title, action, onAction }) {
-  return (
-    <div className="mb-4 flex items-center justify-between gap-4">
-      <h2 className="text-[15px] font-bold tracking-tight text-slate-900">{title}</h2>
-      {action && (
-        <button
-          className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-blue-600 transition hover:text-blue-800"
-          onClick={onAction}
-        >
-          {action} <ArrowRight size={14} />
-        </button>
-      )}
-    </div>
-  )
-}
+const studySpots = [
+  { id: 'spot-lib', name: 'Central Library Pods', status: '14 / 40 seats free' },
+  { id: 'spot-kaapi', name: 'Kaapi Kuteera Patio', status: 'Low queue · 4 min' },
+  { id: 'spot-lab', name: 'Innovation Lab C', status: 'Open for sprint' },
+]
 
-function EventCard({ event }) {
-  return (
-    <article className="flex gap-4 rounded-2xl border border-slate-200/80 bg-white p-4 transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md hover:shadow-slate-200/50">
-      <div
-        className={`flex h-[58px] w-[54px] shrink-0 flex-col items-center justify-center rounded-xl ${
-          event.color === 'orange'
-            ? 'bg-orange-50 text-orange-600'
-            : event.color === 'purple'
-              ? 'bg-violet-50 text-violet-600'
-              : 'bg-blue-50 text-blue-600'
-        }`}
-      >
-        <span className="text-[19px] font-bold leading-none">{event.day}</span>
-        <span className="mt-1 text-[9px] font-bold tracking-[0.12em]">{event.month}</span>
-      </div>
-      <div className="min-w-0 flex-1">
-        <span
-          className={`text-[9px] font-bold tracking-[0.12em] ${
-            event.color === 'orange'
-              ? 'text-orange-600'
-              : event.color === 'purple'
-                ? 'text-violet-600'
-                : 'text-blue-600'
-          }`}
-        >
-          {event.category}
-        </span>
-        <h3 className="mt-1 truncate text-[13px] font-semibold text-slate-800">{event.title}</h3>
-        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-slate-400">
-          <span className="inline-flex items-center gap-1">
-            <Clock3 size={12} /> {event.time}
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <MapPin size={12} /> {event.location}
-          </span>
-        </div>
-      </div>
-    </article>
-  )
-}
-
-function AnnouncementRow({ announcement }) {
-  const Icon = announcement.icon
-
-  return (
-    <article className="flex gap-3.5 border-b border-slate-100 py-4 last:border-b-0 last:pb-0 first:pt-0">
-      <span
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
-          announcement.tone === 'green'
-            ? 'bg-emerald-50 text-emerald-600'
-            : announcement.tone === 'orange'
-              ? 'bg-orange-50 text-orange-600'
-              : 'bg-blue-50 text-blue-600'
-        }`}
-      >
-        <Icon size={16} />
-      </span>
-      <div className="min-w-0 flex-1">
-        <span className="text-[9px] font-bold tracking-[0.12em] text-slate-400">
-          {announcement.category}
-        </span>
-        <h3 className="mt-1 text-[12px] font-semibold leading-relaxed text-slate-800">
-          {announcement.title}
-        </h3>
-        <p className="mt-1.5 text-[10px] text-slate-400">{announcement.time}</p>
-      </div>
-      <ArrowRight size={15} className="mt-4 shrink-0 text-slate-300" />
-    </article>
-  )
-}
-
-function Dashboard({ searchTerm, onNavigate }) {
-  const normalizedSearch = searchTerm.trim().toLowerCase()
-  const visibleLinks = quickLinks.filter((link) =>
-    `${link.label} ${link.detail}`.toLowerCase().includes(normalizedSearch),
-  )
-  const visibleEvents = events.filter((event) =>
-    `${event.title} ${event.category} ${event.location}`.toLowerCase().includes(normalizedSearch),
-  )
-  const visibleAnnouncements = announcements.filter((announcement) =>
-    `${announcement.title} ${announcement.category}`.toLowerCase().includes(normalizedSearch),
-  )
-
-  return (
-    <>
-      <section className="mb-8">
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="mb-2 text-[11px] font-semibold text-slate-400">
-              Monday, October 21, 2024
-            </p>
-            <h1 className="text-[27px] font-bold tracking-[-0.04em] text-slate-900 sm:text-[30px]">
-              Welcome to Campus Connect
-            </h1>
-            <p className="mt-2 max-w-xl text-[13px] leading-relaxed text-slate-500">
-              Your campus, connected. Explore everything happening around you.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-[11px] font-medium text-slate-500 shadow-sm shadow-slate-100">
-            <span className="h-2 w-2 rounded-full bg-emerald-500" />
-            Fall semester 2024
-            <ChevronDown size={14} className="text-slate-400" />
-          </div>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {visibleLinks.map(({ label, detail, icon: Icon, color, page }) => (
-            <button
-              key={label}
-              className="group flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 text-left shadow-sm shadow-slate-100/60 transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md hover:shadow-blue-100/60"
-              onClick={() => onNavigate(page)}
-            >
-              <span
-                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                  color === 'purple'
-                    ? 'bg-violet-50 text-violet-600'
-                    : color === 'orange'
-                      ? 'bg-orange-50 text-orange-600'
-                      : color === 'green'
-                        ? 'bg-emerald-50 text-emerald-600'
-                        : 'bg-blue-50 text-blue-600'
-                }`}
-              >
-                <Icon size={18} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[12px] font-semibold text-slate-800">
-                  {label}
-                </span>
-                <span className="mt-1 block truncate text-[10px] text-slate-400">{detail}</span>
-              </span>
-              <ArrowUpRight
-                size={15}
-                className="text-slate-300 transition group-hover:text-blue-500"
-              />
-            </button>
-          ))}
-          {normalizedSearch && visibleLinks.length === 0 && (
-            <p className="py-3 text-xs text-slate-400 sm:col-span-2 xl:col-span-4">
-              No quick links match “{searchTerm}”.
-            </p>
-          )}
-        </div>
-      </section>
-
-      <section className="mb-8">
-        <SectionHeading
-          title="Your campus at a glance"
-          action="Explore campus"
-          onAction={() => onNavigate('Campus Map')}
-        />
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard
-            icon={Building2}
-            label="Campus buildings"
-            value="28"
-            note="Across 3 campuses"
-            trend="blue"
-          />
-          <StatCard
-            icon={Users}
-            label="Faculty members"
-            value="240+"
-            note="Ready to help"
-            trend="purple"
-          />
-          <StatCard
-            icon={CalendarDays}
-            label="Events this week"
-            value="12"
-            note="4 happening today"
-            trend="orange"
-          />
-          <StatCard
-            icon={Check}
-            label="Campus services"
-            value="16"
-            note="Here when you need them"
-            trend="green"
-          />
-        </div>
-      </section>
-
-      <div className="grid items-start gap-8 xl:grid-cols-[1.25fr_0.85fr]">
-        <section>
-          <SectionHeading
-            title="Upcoming events"
-            action="View all events"
-            onAction={() => onNavigate('Events')}
-          />
-          <div className="space-y-3">
-            {visibleEvents.map((event) => (
-              <EventCard key={event.title} event={event} />
-            ))}
-            {visibleEvents.length === 0 && (
-              <EmptySearch searchTerm={searchTerm} section="events" />
-            )}
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-100/60">
-          <SectionHeading
-            title="Latest announcements"
-            action="See all"
-            onAction={() => onNavigate('Announcements')}
-          />
-          <div>
-            {visibleAnnouncements.map((announcement) => (
-              <AnnouncementRow key={announcement.title} announcement={announcement} />
-            ))}
-            {visibleAnnouncements.length === 0 && (
-              <EmptySearch searchTerm={searchTerm} section="announcements" />
-            )}
-          </div>
-        </section>
-      </div>
-    </>
-  )
-}
-
-function StatCard({ icon: Icon, label, value, note, trend }) {
-  return (
-    <article className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm shadow-slate-100/60">
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] font-semibold text-slate-500">{label}</span>
-        <span
-          className={`flex h-7 w-7 items-center justify-center rounded-lg ${
-            trend === 'purple'
-              ? 'bg-violet-50 text-violet-600'
-              : trend === 'orange'
-                ? 'bg-orange-50 text-orange-600'
-                : trend === 'green'
-                  ? 'bg-emerald-50 text-emerald-600'
-                  : 'bg-blue-50 text-blue-600'
-          }`}
-        >
-          <Icon size={14} />
-        </span>
-      </div>
-      <div className="mt-3 flex items-end justify-between gap-2">
-        <span className="text-[25px] font-bold leading-none tracking-tight text-slate-900">
-          {value}
-        </span>
-        <span className="inline-flex items-center gap-1 text-[9px] font-medium text-slate-400">
-          {trend === 'orange' ? (
-            <ArrowDownRight size={12} />
-          ) : (
-            <ArrowUpRight size={12} className="text-emerald-500" />
-          )}
-          {note}
-        </span>
-      </div>
-    </article>
-  )
-}
-
-function EmptySearch({ searchTerm, section }) {
-  if (!searchTerm.trim()) return null
-
-  return (
-    <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-5 py-8 text-center text-xs text-slate-400">
-      No {section} match “{searchTerm}”.
-    </div>
-  )
-}
-
-function PlaceholderPage({ page }) {
-  const pageInfo = {
-    'Campus Map': {
-      icon: Compass,
-      eyebrow: 'EXPLORE YOUR SURROUNDINGS',
-      description:
-        'Discover buildings, services, and places across campus. The interactive campus map is coming soon.',
-      badge: 'Map experience coming soon',
-      color: 'blue',
-    },
-    Faculty: {
-      icon: Users,
-      eyebrow: 'MEET YOUR CAMPUS COMMUNITY',
-      description:
-        'Find faculty by department and learn more about the people who make our campus a great place to learn.',
-      badge: 'Faculty directory coming soon',
-      color: 'purple',
-    },
-    Events: {
-      icon: CalendarDays,
-      eyebrow: 'MAKE THE MOST OF CAMPUS',
-      description:
-        'Stay in the loop with workshops, talks, and student events happening across campus.',
-      badge: 'Event listings coming soon',
-      color: 'orange',
-    },
-    Announcements: {
-      icon: Megaphone,
-      eyebrow: 'WHAT’S HAPPENING ON CAMPUS',
-      description:
-        'Catch up on important campus news, academic updates, and opportunities for students.',
-      badge: 'Campus updates coming soon',
-      color: 'green',
-    },
-    Settings: {
-      icon: Settings,
-      eyebrow: 'MAKE IT YOURS',
-      description:
-        'Your preferences and account details will live here. Settings are coming soon.',
-      badge: 'Settings coming soon',
-      color: 'blue',
-    },
+function readStoredJson(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key)
+    return raw ? JSON.parse(raw) : fallback
+  } catch {
+    return fallback
   }
-  const { icon: Icon, eyebrow, description, badge, color } = pageInfo[page]
+}
+
+function StudentDashboard({
+  searchTerm,
+  facultyList,
+  announcements,
+  urgentAlerts,
+  onNavigate,
+  onLocateOnMap,
+  rsvpIds,
+  onToggleRsvp,
+  checkedInSpot,
+  onCheckInSpot,
+}) {
+  const [scheduleFilter, setScheduleFilter] = useState('all')
+  const normalizedSearch = searchTerm.trim().toLowerCase()
+
+  const visibleLinks = useMemo(
+    () =>
+      quickLinks.filter((link) =>
+        `${link.label} ${link.detail}`.toLowerCase().includes(normalizedSearch),
+      ),
+    [normalizedSearch],
+  )
+
+  const filteredClasses = useMemo(() => {
+    if (scheduleFilter === 'all') return todayClasses
+    return todayClasses.filter((cls) => cls.status === scheduleFilter)
+  }, [scheduleFilter])
+
+  const visibleEvents = useMemo(
+    () =>
+      campusEvents
+        .filter((event) =>
+          `${event.title} ${event.category} ${event.location}`
+            .toLowerCase()
+            .includes(normalizedSearch),
+        )
+        .slice(0, 3),
+    [normalizedSearch],
+  )
+
+  const visibleAnnouncements = useMemo(
+    () =>
+      announcements
+        .filter((a) =>
+          `${a.title} ${a.category}`.toLowerCase().includes(normalizedSearch),
+        )
+        .slice(0, 3),
+    [announcements, normalizedSearch],
+  )
+
+  const liveClass = todayClasses.find((cls) => cls.status === 'live') ?? todayClasses[0]
+  const creditPercent = Math.round(
+    (studentProfile.creditsEarned / studentProfile.totalCredits) * 100,
+  )
+  const availableFacultyCount = facultyList.filter((f) => f.liveStatus === 'available').length
 
   return (
-    <div className="mx-auto flex min-h-[65vh] max-w-3xl items-center justify-center">
-      <div className="w-full rounded-3xl border border-slate-200/80 bg-white px-6 py-12 text-center shadow-sm shadow-slate-100/60 sm:px-12">
-        <span
-          className={`mx-auto flex h-14 w-14 items-center justify-center rounded-2xl ${
-            color === 'purple'
-              ? 'bg-violet-50 text-violet-600'
-              : color === 'orange'
-                ? 'bg-orange-50 text-orange-600'
-                : color === 'green'
-                  ? 'bg-emerald-50 text-emerald-600'
-                  : 'bg-blue-50 text-blue-600'
-          }`}
-        >
-          <Icon size={25} />
-        </span>
-        <p className="mt-6 text-[10px] font-bold tracking-[0.16em] text-slate-400">{eyebrow}</p>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{page}</h1>
-        <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-slate-500">{description}</p>
-        <span className="mt-6 inline-flex items-center gap-2 rounded-full bg-slate-50 px-3.5 py-2 text-[11px] font-medium text-slate-500">
-          <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-          {badge}
-        </span>
-      </div>
+    <div className="space-y-7">
+      {/* Clean Zero-Overlap Hero */}
+      <section className="campus-hero-mesh rounded-[28px] p-6 text-white shadow-xl sm:p-8 lg:p-10">
+        <div className="grid gap-6 lg:grid-cols-[1.3fr_0.9fr] lg:items-center">
+          <div className="space-y-4">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3.5 py-1.5 text-[11px] font-semibold text-blue-100 backdrop-blur-md">
+              <span className="h-2 w-2 rounded-full bg-mint-400" />
+              Fall Semester ’24 · Week 11 · {studentProfile.semester}
+            </div>
+
+            <h1 className="font-display text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-[42px] lg:leading-[1.12]">
+              <BlurText text={`Welcome back, ${studentProfile.name.split(' ')[0]}.`} />{' '}
+              <span className="font-editorial text-spectral italic font-normal text-4xl sm:text-5xl">
+                <BlurText delay={0.14} text="Here is your day at BMSIT." />
+              </span>
+            </h1>
+
+            <p className="max-w-xl text-sm leading-relaxed text-slate-200">
+              Walk to your lectures on time, see which teachers are in their cabins, and check today’s announcements and campus hangouts.
+            </p>
+
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <MagneticButton
+                className="btn btn-sun sweep px-5 py-3 text-xs font-extrabold"
+                onClick={() => onNavigate('Campus Map')}
+              >
+                <Compass size={16} />
+                Launch Campus Map
+              </MagneticButton>
+              <MagneticButton
+                className="sweep inline-flex items-center gap-2 rounded-2xl border border-white/25 bg-white/10 px-5 py-3 text-xs font-bold text-white backdrop-blur-md transition hover:bg-white/20"
+                onClick={() => onNavigate('Faculty')}
+              >
+                Check Faculty ({availableFacultyCount} Free)
+                <ArrowRight size={15} />
+              </MagneticButton>
+            </div>
+          </div>
+
+          {/* Dedicated Live Lecture Card (Cleanly in its own grid column) */}
+          <SpotlightCard
+            spotlightColor="rgba(56, 189, 248, 0.22)"
+            className="rounded-3xl border border-white/15 bg-slate-950/60 p-5 backdrop-blur-xl"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-mint-400/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-mint-300">
+                <Sparkles size={11} /> Live Lecture
+              </span>
+              <span className="font-mono-code text-[11px] font-semibold text-sun-300">
+                {liveClass.code}
+              </span>
+            </div>
+            <h2 className="mt-3 text-lg font-bold text-white">{liveClass.subject}</h2>
+            <p className="mt-1 text-xs text-slate-300">
+              {liveClass.instructor} · {liveClass.room}
+            </p>
+            <div className="mt-4">
+              <div className="flex items-center justify-between text-[11px] text-slate-300">
+                <span>{liveClass.time}</span>
+                <span className="font-mono-code">{liveClass.progress}% elapsed</span>
+              </div>
+              <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-white/15">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${liveClass.progress}%` }}
+                  transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+                  className="h-full rounded-full bg-linear-to-r from-mint-400 to-sky-400"
+                />
+              </div>
+            </div>
+            <button
+              className="mt-4 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-white/15 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/25"
+              onClick={() => onLocateOnMap(liveClass.locationId)}
+              type="button"
+            >
+              <MapPin size={14} className="text-sun-300" />
+              Walk to {liveClass.room.split(', ')[1] ?? 'Block'}
+            </button>
+          </SpotlightCard>
+        </div>
+
+        {/* Live Campus Pulse Ticker */}
+        <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/45 py-2.5 backdrop-blur-md">
+          <div className="animate-ticker flex items-center gap-8 whitespace-nowrap text-xs font-medium text-slate-200">
+            {[...campusTickerItems, ...campusTickerItems].map((item, index) => (
+              <span key={index} className="inline-flex items-center gap-2.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-sun-400" />
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Student Academic Vitals & Life Dashboard Grid */}
+      <Reveal className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300">
+            <CheckCircle2 size={18} />
+          </div>
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Attendance</span>
+            <p className="text-sm font-extrabold text-slate-900 dark:text-white">{studentProfile.attendance} · All Clear</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-300">
+            <Award size={18} />
+          </div>
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Current CGPA</span>
+            <p className="text-sm font-extrabold text-slate-900 dark:text-white">{studentProfile.cgpa} · Dean&apos;s Honors</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-iris-50 text-iris-600 dark:bg-iris-500/15 dark:text-iris-300">
+            <CalendarDays size={18} />
+          </div>
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Academic Standing</span>
+            <p className="text-sm font-extrabold text-slate-900 dark:text-white">{studentProfile.usn}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300">
+            <Clock3 size={18} />
+          </div>
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Semester Progress</span>
+            <p className="text-sm font-extrabold text-slate-900 dark:text-white">Week 11 of 16 (68%)</p>
+          </div>
+        </div>
+      </Reveal>
+
+      {/* Quick-Launch Bento */}
+      <RevealGroup className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-4" stagger={0.05}>
+        {visibleLinks.map(({ label, detail, icon: Icon, tone, spotlight, page }) => (
+          <RevealItem key={label}>
+            <SpotlightCard
+              spotlightColor={spotlight}
+              className="h-full rounded-3xl border border-slate-200 bg-white shadow-sm transition-colors hover:border-brand-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-brand-500/50"
+            >
+              <button
+                className="group flex h-full w-full items-center gap-3.5 p-4 text-left"
+                onClick={() => onNavigate(page)}
+                type="button"
+              >
+                <span
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${toneStyles[tone]}`}
+                >
+                  <Icon size={20} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-bold text-slate-900 dark:text-white">
+                    {label}
+                  </span>
+                  <span className="mt-0.5 block truncate text-[11px] text-slate-600 dark:text-slate-400">
+                    {detail}
+                  </span>
+                </span>
+                <ArrowUpRight
+                  size={16}
+                  className="text-slate-400 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-brand-600 dark:group-hover:text-brand-400"
+                />
+              </button>
+            </SpotlightCard>
+          </RevealItem>
+        ))}
+      </RevealGroup>
+
+      {/* Academic Snapshot + Today's Timetable */}
+      <Reveal className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-6">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
+                Today’s Class Schedule
+              </h2>
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                Filter sessions or tap Map for walking directions
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {['all', 'live', 'upcoming', 'completed'].map((status) => (
+                <button
+                  key={status}
+                  className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider transition ${
+                    scheduleFilter === status
+                      ? 'bg-brand-600 text-white shadow-sm'
+                      : 'bg-slate-100 text-slate-600 hover:text-slate-900 dark:bg-slate-800 dark:text-slate-400'
+                  }`}
+                  onClick={() => setScheduleFilter(status)}
+                  type="button"
+                >
+                  {status}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2.5">
+            {filteredClasses.map((cls) => (
+              <motion.div
+                layout
+                key={cls.id}
+                className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-3.5 transition ${
+                  cls.status === 'live'
+                    ? 'border-brand-300 bg-brand-50/70 dark:border-brand-500/40 dark:bg-brand-500/10'
+                    : 'border-slate-100 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-800/40'
+                }`}
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <span
+                    className={`font-mono-code rounded-xl px-2.5 py-1.5 text-[11px] font-bold ${
+                      cls.status === 'completed'
+                        ? 'bg-mint-50 text-mint-700 dark:bg-mint-500/20 dark:text-mint-300'
+                        : cls.status === 'live'
+                          ? 'bg-brand-600 text-white'
+                          : 'bg-slate-200/80 text-slate-700 dark:bg-slate-700 dark:text-slate-200'
+                    }`}
+                  >
+                    {cls.code}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-bold text-slate-900 dark:text-white">
+                      {cls.subject}
+                    </p>
+                    <p className="truncate text-[11px] text-slate-600 dark:text-slate-400">
+                      {cls.time} · {cls.room}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 transition hover:border-brand-300 hover:text-brand-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                  onClick={() => onLocateOnMap(cls.locationId)}
+                  type="button"
+                >
+                  <MapPin size={12} /> Map
+                </button>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+
+        {/* Right Column: Progress + Stats + Study Spots */}
+        <div className="grid gap-4">
+          <SpotlightCard
+            spotlightColor="rgba(245, 158, 11, 0.12)"
+            className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Degree Progress
+              </span>
+              <Award size={18} className="text-sun-500" />
+            </div>
+            <div className="mt-3 flex items-baseline justify-between">
+              <span className="font-display text-3xl font-extrabold text-slate-900 dark:text-white">
+                <CountUpNumber value={studentProfile.creditsEarned} />
+                <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+                  {' '}/ {studentProfile.totalCredits} credits
+                </span>
+              </span>
+              <span className="font-mono-code text-xs font-bold text-mint-600 dark:text-mint-400">
+                {creditPercent}%
+              </span>
+            </div>
+            <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${creditPercent}%` }}
+                transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
+                className="h-full rounded-full bg-linear-to-r from-brand-600 via-iris-500 to-sun-400"
+              />
+            </div>
+            <p className="mt-3 text-xs text-slate-600 dark:text-slate-400">
+              {studentProfile.clubRole}
+            </p>
+          </SpotlightCard>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <Building2 size={18} className="text-brand-600 dark:text-brand-400" />
+              <p className="font-display mt-3 text-2xl font-extrabold text-slate-900 dark:text-white">
+                <CountUpNumber value={12} />
+              </p>
+              <p className="text-[11px] font-medium text-slate-600 dark:text-slate-400">
+                Mapped Campus Spots
+              </p>
+            </div>
+            <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <Users size={18} className="text-iris-600 dark:text-iris-400" />
+              <p className="font-display mt-3 text-2xl font-extrabold text-slate-900 dark:text-white">
+                <CountUpNumber value={availableFacultyCount} />
+              </p>
+              <p className="text-[11px] font-medium text-slate-600 dark:text-slate-400">
+                Faculty Free Now ({urgentAlerts.length} alerts)
+              </p>
+            </div>
+          </div>
+
+          {/* Interactive Study Spot Check-in */}
+          <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-white">
+                <Coffee size={14} className="text-sun-500" /> Live Hangout &amp; Study Spots
+              </span>
+              <span className="text-[10px] font-semibold text-mint-600 dark:text-mint-400">
+                Real-time pulse
+              </span>
+            </div>
+            <div className="space-y-2">
+              {studySpots.map((spot) => {
+                const checkedIn = checkedInSpot === spot.id
+                return (
+                  <div
+                    key={spot.id}
+                    className="flex items-center justify-between gap-2 rounded-2xl bg-slate-50 px-3 py-2 dark:bg-slate-800/60"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-bold text-slate-800 dark:text-slate-100">
+                        {spot.name}
+                      </p>
+                      <p className="text-[10px] text-slate-600 dark:text-slate-400">
+                        {spot.status}
+                      </p>
+                    </div>
+                    <button
+                      className={`rounded-xl px-2.5 py-1 text-[10px] font-bold transition ${
+                        checkedIn
+                          ? 'bg-mint-600 text-white'
+                          : 'border border-slate-200 bg-white text-slate-700 hover:border-brand-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
+                      }`}
+                      onClick={() => onCheckInSpot(spot.id, spot.name)}
+                      type="button"
+                    >
+                      {checkedIn ? 'Checked In' : 'Check In'}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      </Reveal>
+
+      {/* Events + Announcements Split */}
+      <Reveal className="grid items-start gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <div className="space-y-3.5">
+          <SectionHeader
+            className="mb-1"
+            eyebrow="This Week on Campus"
+            title="Upcoming Campus Events"
+            action={
+              <button
+                className="inline-flex items-center gap-1 rounded-full border border-brand-200 bg-brand-50 px-3.5 py-1.5 text-xs font-bold text-brand-700 transition hover:bg-brand-100 dark:border-brand-500/40 dark:bg-brand-500/10 dark:text-brand-300"
+                onClick={() => onNavigate('Events')}
+                type="button"
+              >
+                All events <ArrowRight size={14} />
+              </button>
+            }
+          />
+
+          <div className="space-y-3">
+            {visibleEvents.map((event) => {
+              const going = rsvpIds.includes(event.id)
+              return (
+                <SpotlightCard
+                  key={event.id}
+                  className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+                >
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-2xl bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
+                      <span className="text-lg font-extrabold leading-none">{event.day}</span>
+                      <span className="mt-1 text-[9px] font-bold tracking-[0.14em]">{event.month}</span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-brand-600 dark:text-brand-400">
+                        {event.category}
+                      </span>
+                      <h3 className="truncate text-sm font-bold text-slate-900 dark:text-white">
+                        {event.title}
+                      </h3>
+                      <div className="mt-1 flex flex-wrap gap-3 text-[11px] text-slate-600 dark:text-slate-400">
+                        <span className="inline-flex items-center gap-1">
+                          <Clock3 size={12} /> {event.time}
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <MapPin size={12} /> {event.location}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      className={`rounded-xl px-3.5 py-2 text-[11px] font-bold transition ${
+                        going
+                          ? 'bg-mint-50 text-mint-700 dark:bg-mint-500/15 dark:text-mint-300'
+                          : 'bg-slate-100 text-slate-700 hover:bg-brand-600 hover:text-white dark:bg-slate-800 dark:text-slate-200'
+                      }`}
+                      onClick={() => onToggleRsvp(event.id, event.title)}
+                      type="button"
+                    >
+                      {going ? 'Going ✓' : 'RSVP'}
+                    </button>
+                  </div>
+                </SpotlightCard>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
+              Latest Notices
+            </h2>
+            <button
+              className="inline-flex items-center gap-1 text-xs font-bold text-brand-600 hover:text-brand-700 dark:text-brand-400"
+              onClick={() => onNavigate('Announcements')}
+              type="button"
+            >
+              See all <ArrowRight size={14} />
+            </button>
+          </div>
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            {visibleAnnouncements.map((item) => (
+              <div key={item.id} className="py-3.5 first:pt-0 last:pb-0">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400">
+                    {item.category}
+                  </span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400">{item.time}</span>
+                </div>
+                <h3 className="mt-1 text-xs font-bold leading-snug text-slate-800 dark:text-slate-100">
+                  {item.title}
+                </h3>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Reveal>
     </div>
   )
 }
 
 function App() {
+  const [session, setSession] = useState(() => readStoredJson('cc-session', null))
+  const [facultyList, setFacultyList] = useState(() =>
+    readStoredJson('cc-faculty-list', initialFacultyDirectory),
+  )
+  const [announcements, setAnnouncements] = useState(() =>
+    readStoredJson('cc-announcements', initialAnnouncements),
+  )
+  const [urgentAlerts, setUrgentAlerts] = useState(() =>
+    readStoredJson('cc-urgent-alerts', initialUrgentAlerts),
+  )
+
   const [activePage, setActivePage] = useState('Dashboard')
+  const [mapFocusLocationId, setMapFocusLocationId] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [isCommandOpen, setIsCommandOpen] = useState(false)
+  const [toast, setToast] = useState('')
+  const [rsvpIds, setRsvpIds] = useState(['evt-1'])
+  const [readIds, setReadIds] = useState(['ann-3', 'ann-4'])
+  const [checkedInSpot, setCheckedInSpot] = useState('')
+  const [pushPermission, setPushPermission] = useState(() =>
+    typeof Notification !== 'undefined' ? Notification.permission : 'default',
+  )
 
-  const navigateTo = (page) => {
+  const [darkMode, setDarkMode] = useState(() => {
+    try {
+      const saved = localStorage.getItem('cc-dark-mode')
+      if (saved !== null) {
+        return saved === 'true'
+      }
+      return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
+    } catch {
+      return false
+    }
+  })
+  const [reducedMotion] = useState(() => {
+    try {
+      return localStorage.getItem('cc-reduced-motion') === 'true'
+    } catch {
+      return false
+    }
+  })
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkMode)
+    try {
+      localStorage.setItem('cc-dark-mode', String(darkMode))
+    } catch {
+      // ignore storage errors
+    }
+  }, [darkMode])
+
+  // Auto-detect device dark mode changes if user hasn't manually overridden
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    const handleChange = (e) => {
+      try {
+        if (localStorage.getItem('cc-dark-mode') === null) {
+          setDarkMode(e.matches)
+        }
+      } catch {
+        // ignore storage errors
+      }
+    }
+    mediaQuery.addEventListener('change', handleChange)
+    return () => mediaQuery.removeEventListener('change', handleChange)
+  }, [])
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('reduced-motion', reducedMotion)
+    try {
+      localStorage.setItem('cc-reduced-motion', String(reducedMotion))
+    } catch {
+      // ignore storage errors
+    }
+  }, [reducedMotion])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('cc-session', JSON.stringify(session))
+      localStorage.setItem('cc-faculty-list', JSON.stringify(facultyList))
+      localStorage.setItem('cc-announcements', JSON.stringify(announcements))
+      localStorage.setItem('cc-urgent-alerts', JSON.stringify(urgentAlerts))
+    } catch {
+      // ignore storage errors
+    }
+  }, [session, facultyList, announcements, urgentAlerts])
+
+  // Sync across tabs if Student & Faculty are open simultaneously
+  useEffect(() => {
+    const onStorage = (event) => {
+      if (event.key === 'cc-faculty-list' && event.newValue) {
+        setFacultyList(JSON.parse(event.newValue))
+      } else if (event.key === 'cc-announcements' && event.newValue) {
+        setAnnouncements(JSON.parse(event.newValue))
+      } else if (event.key === 'cc-urgent-alerts' && event.newValue) {
+        setUrgentAlerts(JSON.parse(event.newValue))
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
+
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        setIsCommandOpen((prev) => !prev)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  const showToast = (message) => {
+    setToast(message)
+    window.clearTimeout(window.__ccToastTimer)
+    window.__ccToastTimer = window.setTimeout(() => setToast(''), 3400)
+  }
+
+  const handleLogin = (newSession) => {
+    setSession(newSession)
+    setActivePage(newSession.startPage ?? 'Dashboard')
+    if (newSession.targetLocationId) {
+      setMapFocusLocationId(newSession.targetLocationId)
+    }
+    showToast(
+      newSession.role === 'guest'
+        ? `Welcome to BMSIT&M! Exploring as Guest.`
+        : `Signed in as ${newSession.name}`,
+    )
+  }
+
+  const handleSignOut = () => {
+    setSession(null)
+    setActivePage('Dashboard')
+  }
+
+  const navigateTo = (page, locationId = null) => {
     setActivePage(page)
+    if (locationId) setMapFocusLocationId(locationId)
     setSearchTerm('')
     setIsSidebarOpen(false)
   }
 
+  const locateOnMap = (locationId) => {
+    setMapFocusLocationId(locationId)
+    setActivePage('Campus Map')
+    setIsSidebarOpen(false)
+  }
+
+  const toggleRsvp = (eventId, title) => {
+    setRsvpIds((current) => {
+      const exists = current.includes(eventId)
+      showToast(exists ? `Cancelled RSVP for ${title}` : `Seat reserved for ${title}`)
+      return exists ? current.filter((id) => id !== eventId) : [...current, eventId]
+    })
+  }
+
+  const toggleRead = (announcementId) => {
+    setReadIds((current) =>
+      current.includes(announcementId)
+        ? current.filter((id) => id !== announcementId)
+        : [...current, announcementId],
+    )
+  }
+
+  const handleCheckInSpot = (spotId, spotName) => {
+    setCheckedInSpot((current) => {
+      const next = current === spotId ? '' : spotId
+      showToast(next ? `Checked in at ${spotName}` : `Checked out from ${spotName}`)
+      return next
+    })
+  }
+
+  const handleSendUrgentAlert = (faculty, reason) => {
+    const newAlert = {
+      id: `alert-${Date.now()}`,
+      facultyId: faculty.id,
+      facultyName: faculty.name,
+      studentName: session?.name ?? studentProfile.name,
+      studentUsn: studentProfile.usn,
+      reason,
+      urgency: 'urgent',
+      createdAt: 'Just now',
+      status: 'pending',
+      replyNote: '',
+    }
+    setUrgentAlerts((prev) => [newAlert, ...prev])
+    showToast(`Urgent push alert sent to ${faculty.name}!`)
+
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      new Notification(`Urgent Campus Connect Alert for ${faculty.name}`, {
+        body: `${newAlert.studentName}: ${reason}`,
+      })
+    }
+  }
+
+  const handleEnablePush = async () => {
+    if (typeof Notification === 'undefined') {
+      showToast('Browser notifications are not supported in this environment.')
+      return
+    }
+    const perm = await Notification.requestPermission()
+    setPushPermission(perm)
+    showToast(
+      perm === 'granted'
+        ? 'Browser Push Notifications enabled for urgent student alerts!'
+        : 'Push permission not granted — in-app alerts remain active.',
+    )
+  }
+
+  const handleChangeLiveStatus = (facultyId, liveStatus) => {
+    setFacultyList((prev) =>
+      prev.map((f) => (f.id === facultyId ? { ...f, liveStatus } : f)),
+    )
+    showToast(`Availability updated to "${liveStatus}"`)
+  }
+
+  const handleToggleSlotType = (facultyId, slotId) => {
+    setFacultyList((prev) =>
+      prev.map((f) => {
+        if (f.id !== facultyId) return f
+        return {
+          ...f,
+          timetable: f.timetable.map((slot) =>
+            slot.id === slotId
+              ? { ...slot, type: slot.type === 'office-hours' ? 'busy' : 'office-hours' }
+              : slot,
+          ),
+        }
+      }),
+    )
+    showToast('Timetable slot availability updated for students.')
+  }
+
+  const handleAddSlot = (facultyId, slot) => {
+    setFacultyList((prev) =>
+      prev.map((f) =>
+        f.id === facultyId ? { ...f, timetable: [...f.timetable, slot] } : f,
+      ),
+    )
+    showToast(`Added ${slot.title} to ${slot.day}`)
+  }
+
+  const handleRespondAlert = (alertId, status, replyNote) => {
+    setUrgentAlerts((prev) =>
+      prev.map((a) => (a.id === alertId ? { ...a, status, replyNote } : a)),
+    )
+    showToast(`Student request marked as ${status}.`)
+  }
+
+  const handlePublishAnnouncement = ({ title, category, summary, author }) => {
+    const newNotice = {
+      id: `ann-${Date.now()}`,
+      category,
+      priority: 'Circular',
+      title,
+      summary,
+      time: 'Just now',
+      author,
+      unread: true,
+    }
+    setAnnouncements((prev) => [newNotice, ...prev])
+    showToast('Announcement published to college-wide board!')
+  }
+
+  const currentFaculty = useMemo(
+    () =>
+      facultyList.find((f) => f.id === session?.userId) ?? facultyList[0],
+    [facultyList, session?.userId],
+  )
+
+  const badgeCount =
+    session?.role === 'faculty'
+      ? urgentAlerts.filter((a) => a.facultyId === currentFaculty.id && a.status === 'pending').length
+      : announcements.filter((a) => !readIds.includes(a.id)).length
+
   return (
-    <div className="min-h-screen bg-[#f7f9fc] text-slate-900">
-      <Sidebar
-        activePage={activePage}
-        onNavigate={navigateTo}
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-      />
+    <MotionConfig reducedMotion={reducedMotion ? 'always' : 'user'}>
+      {!session ? (
+        <AuthGate
+          onLogin={handleLogin}
+          darkMode={darkMode}
+          onToggleDark={() => setDarkMode((prev) => !prev)}
+        />
+      ) : (
+        <div className="campus-dot-grid relative min-h-screen text-slate-900 dark:text-slate-100">
+          <CampusBackdrop />
+          <a className="skip-link" href="#main-content">
+            Skip to main content
+          </a>
 
-      <main className="min-h-screen lg:pl-[260px]">
-        <header className="sticky top-0 z-20 flex h-[68px] items-center gap-3 border-b border-slate-200/80 bg-white/90 px-4 backdrop-blur-md sm:px-7 lg:px-10">
-          <button
-            aria-label="Open navigation menu"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 lg:hidden"
-            onClick={() => setIsSidebarOpen(true)}
-          >
-            <Menu size={18} />
-          </button>
-          <div className="flex min-w-0 flex-1 items-center justify-between gap-4">
-            <div className="hidden items-center gap-2 text-[11px] text-slate-400 sm:flex">
-              <span>Workspace</span>
-              <span className="text-slate-300">/</span>
-              <span className="font-semibold text-slate-700">{activePage}</span>
+          <Sidebar
+            session={session}
+            activePage={activePage}
+            onNavigate={(page) => navigateTo(page)}
+            onSignOut={handleSignOut}
+            isOpen={isSidebarOpen}
+            onClose={() => setIsSidebarOpen(false)}
+            badgeCount={badgeCount}
+          />
+
+          <AnimatePresence>
+            {isCommandOpen && (
+              <CommandPalette
+                isOpen={isCommandOpen}
+                onClose={() => setIsCommandOpen(false)}
+                onNavigate={navigateTo}
+              />
+            )}
+          </AnimatePresence>
+
+          <main className="relative z-10 min-h-screen lg:pl-[268px]" id="main-content">
+            <TopBar
+              activePage={activePage}
+              onOpenSidebar={() => setIsSidebarOpen(true)}
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              onOpenCommand={() => setIsCommandOpen(true)}
+              darkMode={darkMode}
+              onToggleDark={() => setDarkMode((prev) => !prev)}
+              session={session}
+            />
+
+            <div className="mx-auto max-w-[1440px] px-4 py-6 sm:px-7 sm:py-8 lg:px-10">
+              <AnimatePresence mode="wait">
+                <PageTransition pageKey={`${session.role}-${activePage}`}>
+                  {session.role === 'guest' ? (
+                    <CampusMap
+                      key={mapFocusLocationId ?? 'campus-map'}
+                      initialLocationId={mapFocusLocationId}
+                      isGuestMode
+                      darkMode={darkMode}
+                    />
+                  ) : session.role === 'faculty' ? (
+                    <>
+                      {activePage === 'Dashboard' && (
+                        <FacultyDashboard
+                          faculty={currentFaculty}
+                          urgentAlerts={urgentAlerts}
+                          announcements={announcements}
+                          onChangeLiveStatus={handleChangeLiveStatus}
+                          onNavigate={(page) => navigateTo(page)}
+                          onRespondAlert={handleRespondAlert}
+                          onPublishAnnouncement={handlePublishAnnouncement}
+                        />
+                      )}
+                      {activePage === 'My Timetable' && (
+                        <FacultyTimetablePage
+                          faculty={currentFaculty}
+                          onToggleSlotType={handleToggleSlotType}
+                          onAddSlot={handleAddSlot}
+                        />
+                      )}
+                      {activePage === 'Notifications' && (
+                        <FacultyNotificationsPage
+                          faculty={currentFaculty}
+                          urgentAlerts={urgentAlerts}
+                          announcements={announcements}
+                          onRespondAlert={handleRespondAlert}
+                          onEnablePush={handleEnablePush}
+                          pushPermission={pushPermission}
+                        />
+                      )}
+                      {activePage === 'Campus Map' && (
+                        <CampusMap
+                          key={mapFocusLocationId ?? 'campus-map'}
+                          initialLocationId={mapFocusLocationId}
+                          darkMode={darkMode}
+                        />
+                      )}
+                      {activePage === 'Events' && (
+                        <EventsPage
+                          rsvpIds={rsvpIds}
+                          onToggleRsvp={toggleRsvp}
+                          onLocateOnMap={locateOnMap}
+                        />
+                      )}
+                      {activePage === 'Settings' && (
+                        <SettingsPage
+                          session={session}
+                          onNotify={showToast}
+                          onSignOut={handleSignOut}
+                        />
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {activePage === 'Dashboard' && (
+                        <StudentDashboard
+                          searchTerm={searchTerm}
+                          facultyList={facultyList}
+                          announcements={announcements}
+                          urgentAlerts={urgentAlerts}
+                          onNavigate={(page) => navigateTo(page)}
+                          onLocateOnMap={locateOnMap}
+                          rsvpIds={rsvpIds}
+                          onToggleRsvp={toggleRsvp}
+                          checkedInSpot={checkedInSpot}
+                          onCheckInSpot={handleCheckInSpot}
+                        />
+                      )}
+                      {activePage === 'Campus Map' && (
+                        <CampusMap
+                          key={mapFocusLocationId ?? 'campus-map'}
+                          initialLocationId={mapFocusLocationId}
+                          darkMode={darkMode}
+                        />
+                      )}
+                      {activePage === 'Faculty' && (
+                        <FacultyPage
+                          facultyList={facultyList}
+                          urgentAlerts={urgentAlerts}
+                          onLocateOnMap={locateOnMap}
+                          onNotify={showToast}
+                          onSendUrgentAlert={handleSendUrgentAlert}
+                        />
+                      )}
+                      {activePage === 'Events' && (
+                        <EventsPage
+                          rsvpIds={rsvpIds}
+                          onToggleRsvp={toggleRsvp}
+                          onLocateOnMap={locateOnMap}
+                        />
+                      )}
+                      {activePage === 'Announcements' && (
+                        <AnnouncementsPage
+                          announcements={announcements}
+                          readIds={readIds}
+                          onToggleRead={toggleRead}
+                        />
+                      )}
+                      {activePage === 'Settings' && (
+                        <SettingsPage
+                          session={session}
+                          onNotify={showToast}
+                          onSignOut={handleSignOut}
+                        />
+                      )}
+                    </>
+                  )}
+                </PageTransition>
+              </AnimatePresence>
+
+              <footer className="mt-10 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200/80 py-5 text-[11px] text-slate-600 dark:border-slate-800 dark:text-slate-400">
+                <span>© 2024 Campus Connect · BMS Institute of Technology &amp; Management</span>
+                <span className="inline-flex items-center gap-1.5">
+                  {session.role === 'faculty'
+                    ? 'Faculty Workspace'
+                    : session.role === 'guest'
+                      ? 'Guest Campus Navigator'
+                      : 'Student Command Center'}{' '}
+                  <span className="h-2 w-2 rounded-full bg-brand-600" />
+                </span>
+              </footer>
             </div>
-            <label className="relative ml-auto block w-full max-w-[340px]">
-              <Search
-                size={16}
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-              />
-              <input
-                aria-label="Search campus information"
-                className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50/80 pl-10 pr-16 text-xs text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-50"
-                onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder="Search campus, events..."
-                type="search"
-                value={searchTerm}
-              />
-              <span className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[9px] font-medium text-slate-400 sm:block">
-                ⌘ K
-              </span>
-            </label>
-          </div>
-        </header>
+          </main>
 
-        <div className="mx-auto max-w-[1440px] px-4 py-7 sm:px-7 sm:py-9 lg:px-10">
-          {activePage === 'Dashboard' ? (
-            <Dashboard searchTerm={searchTerm} onNavigate={navigateTo} />
-          ) : activePage === 'Campus Map' ? (
-            <CampusMap />
-          ) : (
-            <PlaceholderPage page={activePage} />
-          )}
-          <footer className="mt-10 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200/80 py-5 text-[10px] text-slate-400">
-            <span>© 2024 Campus Connect</span>
-            <span className="inline-flex items-center gap-1.5">
-              Made for your campus <span className="text-blue-500">●</span>
-            </span>
-          </footer>
+          <AnimatePresence>
+            {toast && (
+              <motion.div
+                aria-live="polite"
+                initial={{ opacity: 0, y: 16, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 12, scale: 0.96 }}
+                transition={{ type: 'spring', stiffness: 420, damping: 28 }}
+                className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-900 px-4 py-3 text-xs font-semibold text-white shadow-xl dark:border-slate-700 dark:bg-white dark:text-slate-900"
+                role="status"
+              >
+                <CheckCircle2 size={15} className="text-mint-400 dark:text-mint-600" />
+                {toast}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
-      </main>
-    </div>
+      )}
+    </MotionConfig>
   )
 }
 

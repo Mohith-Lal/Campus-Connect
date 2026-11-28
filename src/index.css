@@ -1,30 +1,170 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ============================================================
+   Campus Connect — "Aurora Collegiate" design system
+   Motion rules (ui-ux-pro-max / UX guidelines):
+   - animate transform + opacity only (never width/height/top/left)
+   - all continuous ambient motion is background-scoped + pausable
+   - everything ambient is killed by prefers-reduced-motion
+   ============================================================ */
+
+@theme {
+  --font-display: "Cabinet Grotesk", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif-editorial: "Newsreader", Georgia, serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Brand ramp — cobalt (primary action) */
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-300: #93c5fd;
+  --color-brand-400: #60a5fa;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+
+  /* Iris (secondary / creative) */
+  --color-iris-50: #f5f3ff;
+  --color-iris-100: #ede9fe;
+  --color-iris-200: #ddd6fe;
+  --color-iris-300: #c4b5fd;
+  --color-iris-400: #a78bfa;
+  --color-iris-500: #8b5cf6;
+  --color-iris-600: #7c3aed;
+  --color-iris-700: #6d28d9;
+
+  /* Sun (accent / energy) */
+  --color-sun-50: #fffbeb;
+  --color-sun-100: #fef3c7;
+  --color-sun-200: #fde68a;
+  --color-sun-300: #fcd34d;
+  --color-sun-400: #fbbf24;
+  --color-sun-500: #f59e0b;
+  --color-sun-600: #d97706;
+  --color-sun-700: #b45309;
+
+  /* Mint (success / live) */
+  --color-mint-50: #ecfdf5;
+  --color-mint-100: #d1fae5;
+  --color-mint-200: #a7f3d0;
+  --color-mint-300: #6ee7b7;
+  --color-mint-400: #34d399;
+  --color-mint-500: #10b981;
+  --color-mint-600: #059669;
+  --color-mint-700: #047857;
+
+  /* Ink (dark canvas surfaces) */
+  --color-ink-950: #04060d;
+  --color-ink-900: #080c17;
+  --color-ink-850: #0b1120;
+  --color-ink-800: #101728;
+  --color-ink-700: #182136;
+
+  /* Paper (light canvas surfaces) */
+  --color-paper-50: #f7f9fd;
+  --color-paper-100: #eef2f9;
+
+  --shadow-panel: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 40px -24px rgba(15, 23, 42, 0.35);
+  --shadow-panel-hover: 0 2px 4px rgba(15, 23, 42, 0.05), 0 26px 60px -28px rgba(37, 99, 235, 0.4);
+  --shadow-float: 0 30px 80px -40px rgba(2, 6, 23, 0.7);
+}
 
 :root {
-  font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
-  color: #0f172a;
-  background: #f7f9fc;
+  color-scheme: light;
+  --bg-canvas: #f8fafc;
+  --bg-canvas-2: #f1f5f9;
+  --bg-surface: rgba(255, 255, 255, 0.95);
+  --bg-surface-solid: #ffffff;
+  --bg-surface-muted: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --border-subtle: rgba(15, 23, 42, 0.08);
+  --border-strong: rgba(15, 23, 42, 0.16);
+  --accent-cobalt: #1d4ed8;
+  --accent-amber: #d97706;
+  --accent-emerald: #059669;
+  --accent-violet: #6d28d9;
+  --glass-blur: saturate(1.2) blur(14px);
+  --aurora-opacity: 0.35;
+  --grain-opacity: 0.02;
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  background: var(--bg-canvas);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-optical-sizing: auto;
+}
+
+.dark {
+  color-scheme: dark;
+  --bg-canvas: #090d16;
+  --bg-canvas-2: #0f172a;
+  --bg-surface: rgba(15, 23, 42, 0.88);
+  --bg-surface-solid: #0f172a;
+  --bg-surface-muted: #1e293b;
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --aurora-opacity: 0.45;
+  --grain-opacity: 0.03;
+}
+
+/* Visual Style Moods (Cobalt Classic / Royal Iris / Varsity Amber) */
+[data-mood="iris"] {
+  --accent-cobalt: #7c3aed;
+  --color-brand-500: #8b5cf6;
+  --color-brand-600: #7c3aed;
+  --color-brand-700: #6d28d9;
+}
+
+[data-mood="amber"] {
+  --accent-cobalt: #d97706;
+  --color-brand-500: #f59e0b;
+  --color-brand-600: #d97706;
+  --color-brand-700: #b45309;
 }
 
 * {
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
+  background: radial-gradient(1200px 800px at 80% -10%, var(--bg-canvas-2), transparent 60%),
+    var(--bg-canvas);
+  color: var(--text-primary);
+  transition: background-color 250ms ease, color 250ms ease;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, .font-display {
+  font-family: var(--font-display);
+}
+
+.font-mono-code {
+  font-family: var(--font-mono);
+}
+
+.font-editorial {
+  font-family: var(--font-serif-editorial);
 }
 
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
 }
 
@@ -33,6 +173,472 @@ button {
 }
 
 ::selection {
-  color: #1d4ed8;
-  background: #dbeafe;
+  color: #ffffff;
+  background: #2563eb;
+}
+
+/* ---------- Accessibility: one consistent, visible focus ring ---------- */
+:focus-visible {
+  outline: 2px solid var(--accent-cobalt);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.skip-link {
+  position: fixed;
+  top: -60px;
+  left: 16px;
+  z-index: 100;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: var(--accent-cobalt);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.skip-link:focus {
+  transform: translateY(70px);
+}
+
+/* ---------- Scrollbars ---------- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.4) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.35);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.6);
+  background-clip: content-box;
+}
+
+/* ============================================================
+   Ambient atmosphere — aurora field (transform/opacity only)
+   ============================================================ */
+.aurora-field {
+  position: fixed;
+  inset: -20vh -10vw;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  opacity: var(--aurora-opacity);
+}
+
+.aurora-blob {
+  position: absolute;
+  border-radius: 50%;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+}
+
+.aurora-blob--cobalt {
+  top: -18vh;
+  left: -12vw;
+  width: 68vmax;
+  height: 68vmax;
+  background: radial-gradient(circle at 35% 35%, rgba(37, 99, 235, 0.5), rgba(37, 99, 235, 0) 62%);
+  animation: auroraDrift 34s ease-in-out infinite;
+}
+
+.aurora-blob--iris {
+  bottom: -22vh;
+  right: -14vw;
+  width: 62vmax;
+  height: 62vmax;
+  background: radial-gradient(circle at 60% 40%, rgba(124, 58, 237, 0.42), rgba(124, 58, 237, 0) 64%);
+  animation: auroraDrift 44s ease-in-out infinite reverse;
+}
+
+.aurora-blob--sun {
+  top: 38vh;
+  left: 52vw;
+  width: 40vmax;
+  height: 40vmax;
+  background: radial-gradient(circle at 50% 50%, rgba(245, 158, 11, 0.24), rgba(245, 158, 11, 0) 66%);
+  animation: auroraDrift 52s ease-in-out infinite;
+}
+
+@keyframes auroraDrift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  33% { transform: translate3d(6vw, -4vh, 0) scale(1.12); }
+  66% { transform: translate3d(-4vw, 5vh, 0) scale(0.94); }
+}
+
+/* Fine grain keeps large gradient fields from banding. Static = free. */
+.grain-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  pointer-events: none;
+  opacity: var(--grain-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ============================================================
+   Surfaces
+   ============================================================ */
+.glass {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+.panel {
+  position: relative;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 24px;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-panel);
+  transition: border-color 260ms ease, box-shadow 260ms ease, transform 260ms ease;
+}
+
+.panel--lift:hover {
+  border-color: color-mix(in srgb, var(--accent-cobalt) 40%, transparent);
+  box-shadow: var(--shadow-panel-hover);
+  transform: translate3d(0, -3px, 0);
+}
+
+/* Animated gradient hairline — reveals on hover, never loops. */
+.hairline::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    120deg,
+    transparent 0%,
+    color-mix(in srgb, var(--accent-cobalt) 65%, transparent) 35%,
+    color-mix(in srgb, var(--accent-violet) 55%, transparent) 60%,
+    transparent 100%
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 320ms ease;
+  pointer-events: none;
+}
+
+.hairline:hover::after,
+.hairline:focus-within::after {
+  opacity: 1;
+}
+
+/* Rotating prismatic edge glow for signature hero / spotlight cards */
+.prism-border {
+  position: relative;
+  overflow: hidden;
+}
+
+.prism-border::before {
+  content: "";
+  position: absolute;
+  inset: -120%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    rgba(96, 165, 250, 0.45) 60deg,
+    rgba(196, 181, 253, 0.45) 120deg,
+    rgba(251, 191, 36, 0.35) 180deg,
+    transparent 240deg
+  );
+  animation: orbitSpin 14s linear infinite;
+  pointer-events: none;
+  opacity: 0.35;
+}
+
+.prism-border > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ============================================================
+   Page textures
+   ============================================================ */
+.campus-dot-grid {
+  background-image: radial-gradient(rgba(37, 99, 235, 0.16) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.dark .campus-dot-grid {
+  background-image: radial-gradient(rgba(96, 165, 250, 0.14) 1px, transparent 1px);
+}
+
+.campus-hero-mesh {
+  background:
+    radial-gradient(circle at 12% 20%, rgba(56, 189, 248, 0.32), transparent 46%),
+    radial-gradient(circle at 88% 16%, rgba(245, 158, 11, 0.24), transparent 42%),
+    radial-gradient(circle at 68% 92%, rgba(124, 58, 237, 0.3), transparent 50%),
+    linear-gradient(135deg, #070d20 0%, #101a3d 52%, #1b2a5e 100%);
+}
+
+.mesh-card {
+  background:
+    radial-gradient(120% 120% at 0% 0%, rgba(37, 99, 235, 0.16), transparent 55%),
+    var(--bg-surface);
+}
+
+/* Spectral text gradient used for hero/display headings */
+.text-spectral {
+  background: linear-gradient(100deg, #1d4ed8 0%, #6d28d9 48%, #047857 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: spectralPan 12s ease-in-out infinite;
+}
+
+.dark .text-spectral,
+.campus-hero-mesh .text-spectral {
+  background: linear-gradient(100deg, #fcd34d 0%, #93c5fd 42%, #c4b5fd 74%, #6ee7b7 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@keyframes spectralPan {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* ============================================================
+   Motion primitives (all transform/opacity)
+   ============================================================ */
+@keyframes floatSlow {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  50% { transform: translate3d(0, -10px, 0) rotate(1.5deg); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.75; transform: scale(1.07); }
+}
+
+@keyframes fadeUpIn {
+  from { opacity: 0; transform: translate3d(0, 16px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes shimmerSweep {
+  0% { transform: translateX(-120%) skewX(-18deg); }
+  100% { transform: translateX(320%) skewX(-18deg); }
+}
+
+@keyframes tickerScroll {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
+}
+
+@keyframes orbitSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes orbitSpinReverse {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+@keyframes beaconPing {
+  0% { transform: scale(0.6); opacity: 0.9; }
+  80%, 100% { transform: scale(2.1); opacity: 0; }
+}
+
+@keyframes drawLine {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.animate-fade-up {
+  animation: fadeUpIn 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--stagger, 0) * 65ms);
+}
+
+.animate-float-slow {
+  animation: floatSlow 7s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 5s ease-in-out infinite;
+}
+
+.animate-ticker {
+  display: flex;
+  width: max-content;
+  animation: tickerScroll 38s linear infinite;
+}
+
+.animate-ticker:hover {
+  animation-play-state: paused;
+}
+
+.animate-orbit {
+  animation: orbitSpin 26s linear infinite;
+}
+
+.animate-orbit--reverse {
+  animation: orbitSpinReverse 34s linear infinite;
+}
+
+.animate-beacon {
+  animation: beaconPing 2.6s cubic-bezier(0.2, 0.6, 0.4, 1) infinite;
+}
+
+.sweep {
+  position: relative;
+  overflow: hidden;
+}
+
+.sweep::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 45%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transform: translateX(-160%) skewX(-18deg);
+  pointer-events: none;
+}
+
+.sweep:hover::before {
+  animation: shimmerSweep 900ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ============================================================
+   Buttons
+   ============================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1), background-color 200ms ease,
+    border-color 200ms ease, box-shadow 240ms ease, color 200ms ease;
+  will-change: transform;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--color-brand-500), var(--color-brand-700));
+  color: #fff;
+  box-shadow: 0 10px 30px -14px rgba(37, 99, 235, 0.9);
+}
+
+.btn-primary:hover {
+  box-shadow: 0 16px 40px -14px rgba(37, 99, 235, 0.95);
+}
+
+.btn-sun {
+  background: linear-gradient(135deg, var(--color-sun-400), var(--color-sun-500));
+  color: #1a1206;
+  box-shadow: 0 10px 30px -14px rgba(245, 158, 11, 0.9);
+}
+
+.btn-sun:hover {
+  box-shadow: 0 16px 40px -14px rgba(245, 158, 11, 0.95);
+}
+
+.btn-ghost {
+  background: color-mix(in srgb, var(--bg-surface-solid) 60%, transparent);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+}
+
+.btn-ghost:hover {
+  border-color: color-mix(in srgb, var(--accent-cobalt) 45%, transparent);
+}
+
+/* ============================================================
+   Keyboard affordances
+   ============================================================ */
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--bg-surface-solid) 80%, transparent);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.08);
+}
+
+/* ============================================================
+   Leaflet map container polish
+   ============================================================ */
+.leaflet-container {
+  font-family: var(--font-sans) !important;
+}
+
+/* ============================================================
+   Reduced motion — OS preference AND in-app toggle
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .animate-fade-up,
+  .animate-float-slow,
+  .animate-pulse-glow,
+  .animate-ticker,
+  .animate-orbit,
+  .animate-orbit--reverse,
+  .animate-beacon,
+  .text-spectral,
+  .aurora-blob {
+    animation: none !important;
+  }
+  .sweep:hover::before {
+    animation: none !important;
+  }
+}
+
+.reduced-motion .animate-fade-up,
+.reduced-motion .animate-float-slow,
+.reduced-motion .animate-pulse-glow,
+.reduced-motion .animate-ticker,
+.reduced-motion .animate-orbit,
+.reduced-motion .animate-orbit--reverse,
+.reduced-motion .animate-beacon,
+.reduced-motion .text-spectral,
+.reduced-motion .aurora-blob,
+.reduced-motion .aurora-field {
+  animation: none !important;
+}
+
+.reduced-motion *,
+.reduced-motion *::before,
+.reduced-motion *::after {
+  transition-duration: 1ms !important;
+}
+
+.reduced-motion .aurora-field {
+  opacity: 0.34;
 }
