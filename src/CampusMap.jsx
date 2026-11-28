@@ -1,5 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { LocateFixed, MapPin, Search } from 'lucide-react'
+import {
+  AlertTriangle,
+  ArrowUp,
+  ArrowUpLeft,
+  ArrowUpRight,
+  CornerUpLeft,
+  CornerUpRight,
+  Crosshair,
+  LocateFixed,
+  MapPin,
+  RotateCcw,
+  Search,
+} from 'lucide-react'
 import {
   CircleMarker,
   GeoJSON,
@@ -17,9 +29,31 @@ import { getStudentWalkingPaths } from './data/walkingPaths.js'
 import { buildWalkingGraph } from './data/walkingGraph.js'
 import { findShortestPath } from './utils/shortestPath.js'
 import { findNearestWalkingNode } from './utils/nearestWalkingNode.js'
+import { generateNavigationInstructions } from './utils/navigationInstructions.js'
+import { createOffRouteDetector } from './utils/offRouteDetection.js'
 import {
+  createArrivalDetector,
+  updateNavigationDetectors,
+} from './utils/arrivalDetection.js'
+import {
+  calculateReroute,
+  createRerouteCoordinator,
+} from './utils/automaticRerouting.js'
+import {
+  createGpsWatchOptions,
+  getGpsTrackingErrorMessage,
+  isReliableGpsReading,
+} from './utils/gpsTracking.js'
+import {
+  GPS_WATCH_TIMEOUT_MS,
+  DESTINATION_ARRIVAL_CONSECUTIVE_READINGS,
+  DESTINATION_ARRIVAL_RADIUS_METERS,
   MAX_GPS_ACCURACY_METERS,
   MAX_GPS_NETWORK_DISTANCE_METERS,
+  OFF_ROUTE_CONSECUTIVE_READINGS,
+  OFF_ROUTE_DISTANCE_METERS,
+  OFF_ROUTE_RECOVERY_DISTANCE_METERS,
+  ON_ROUTE_RECOVERY_CONSECUTIVE_READINGS,
 } from './utils/navigationConfig.js'
 
 const categories = [
@@ -106,12 +140,43 @@ function NavigationRouteLayer({ route }) {
   )
 }
 
-function UserLocationMarker({ position, accuracy }) {
+function UserLocationMarker({
+  position,
+  accuracy,
+  isTracking,
+  isFollowing,
+  onManualPan,
+}) {
   const map = useMap()
+  const previousMapStateRef = useRef({
+    position: null,
+    isTracking: false,
+    isFollowing: false,
+  })
 
   useEffect(() => {
-    if (position) map.flyTo(position, 18, { duration: 0.7 })
-  }, [map, position])
+    if (!isTracking) return undefined
+
+    map.on('dragstart', onManualPan)
+    return () => map.off('dragstart', onManualPan)
+  }, [isTracking, map, onManualPan])
+
+  useEffect(() => {
+    const previous = previousMapStateRef.current
+    const positionChanged = previous.position !== position
+    const shouldFollow =
+      isTracking &&
+      isFollowing &&
+      (positionChanged ||
+        !previous.isTracking ||
+        !previous.isFollowing)
+    const shouldCenterNewFix = !isTracking && positionChanged
+
+    previousMapStateRef.current = { position, isTracking, isFollowing }
+    if (position && (shouldFollow || shouldCenterNewFix)) {
+      map.flyTo(position, 18, { duration: 0.7 })
+    }
+  }, [isFollowing, isTracking, map, position])
 
   if (!position) return null
 
@@ -186,9 +251,53 @@ function CampusMap() {
   const [routeResult, setRouteResult] = useState(null)
   const [gpsPosition, setGpsPosition] = useState(null)
   const [gpsFix, setGpsFix] = useState(null)
+  const [gpsAccuracy, setGpsAccuracy] = useState(null)
   const [gpsLoading, setGpsLoading] = useState(false)
   const [gpsError, setGpsError] = useState('')
+  const [isNavigating, setIsNavigating] = useState(false)
+  const [isFollowingUser, setIsFollowingUser] = useState(true)
+  const [offRouteState, setOffRouteState] = useState({
+    status: 'checking',
+    reliable: false,
+    distanceMeters: null,
+  })
+  const [rerouteInProgress, setRerouteInProgress] = useState(false)
+  const [rerouteError, setRerouteError] = useState('')
+  const [routeUpdatedMessage, setRouteUpdatedMessage] = useState('')
+  const [arrivalState, setArrivalState] = useState({
+    arrived: false,
+    reliable: false,
+    distanceMeters: null,
+    consecutiveReadings: 0,
+  })
   const searchContainerRef = useRef(null)
+  const gpsWatchIdRef = useRef(null)
+  const gpsWatchActiveRef = useRef(false)
+  const navigationSessionRef = useRef(0)
+  const latestRouteRef = useRef(null)
+  const latestDestinationIdRef = useRef(routeDestinationId)
+  const latestReliableGpsRef = useRef(null)
+  const rerouteAttemptedRef = useRef(false)
+  const rerouteCoordinatorRef = useRef(null)
+  if (rerouteCoordinatorRef.current === null) {
+    rerouteCoordinatorRef.current = createRerouteCoordinator()
+  }
+  const offRouteDetectorRef = useRef(null)
+  if (offRouteDetectorRef.current === null) {
+    offRouteDetectorRef.current = createOffRouteDetector({
+      offRouteDistanceMeters: OFF_ROUTE_DISTANCE_METERS,
+      recoveryDistanceMeters: OFF_ROUTE_RECOVERY_DISTANCE_METERS,
+      consecutiveOffRouteReadings: OFF_ROUTE_CONSECUTIVE_READINGS,
+      consecutiveRecoveryReadings: ON_ROUTE_RECOVERY_CONSECUTIVE_READINGS,
+    })
+  }
+  const arrivalDetectorRef = useRef(null)
+  if (arrivalDetectorRef.current === null) {
+    arrivalDetectorRef.current = createArrivalDetector({
+      arrivalRadiusMeters: DESTINATION_ARRIVAL_RADIUS_METERS,
+      consecutiveReadingsRequired: DESTINATION_ARRIVAL_CONSECUTIVE_READINGS,
+    })
+  }
   const graph = useMemo(
     () => (walkingPaths ? buildWalkingGraph(walkingPaths, campusLocations) : null),
     [walkingPaths],
@@ -213,6 +322,18 @@ function CampusMap() {
     [matchingLocations],
   )
   const showSearchResults = isSearchFocused && normalizedSearch.length > 0
+  const navigationInstructions = useMemo(
+    () => generateNavigationInstructions(routeResult),
+    [routeResult],
+  )
+
+  useEffect(() => {
+    latestRouteRef.current = routeResult
+  }, [routeResult])
+
+  useEffect(() => {
+    latestDestinationIdRef.current = routeDestinationId
+  }, [routeDestinationId])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -251,6 +372,17 @@ function CampusMap() {
     return () => document.removeEventListener('click', handlePointerDown)
   }, [])
 
+  useEffect(
+    () => () => {
+      if (gpsWatchIdRef.current !== null) {
+        navigator.geolocation?.clearWatch(gpsWatchIdRef.current)
+        gpsWatchIdRef.current = null
+      }
+      gpsWatchActiveRef.current = false
+    },
+    [],
+  )
+
   const toggleCategory = (category) =>
     setActiveCategory((current) => (current === category ? null : category))
 
@@ -260,13 +392,48 @@ function CampusMap() {
     setIsSearchFocused(false)
   }
 
+  const stopNavigation = () => {
+    navigationSessionRef.current += 1
+    if (gpsWatchIdRef.current !== null) {
+      navigator.geolocation?.clearWatch(gpsWatchIdRef.current)
+      gpsWatchIdRef.current = null
+    }
+    gpsWatchActiveRef.current = false
+    setIsNavigating(false)
+    setIsFollowingUser(false)
+    setOffRouteState(offRouteDetectorRef.current.reset())
+    setArrivalState(arrivalDetectorRef.current.reset())
+    rerouteAttemptedRef.current = false
+    latestReliableGpsRef.current = null
+    setRerouteInProgress(false)
+  }
+
+  const finishNavigationOnArrival = () => {
+    navigationSessionRef.current += 1
+    if (gpsWatchIdRef.current !== null) {
+      navigator.geolocation?.clearWatch(gpsWatchIdRef.current)
+      gpsWatchIdRef.current = null
+    }
+    gpsWatchActiveRef.current = false
+    setIsNavigating(false)
+    setIsFollowingUser(false)
+    setOffRouteState(offRouteDetectorRef.current.reset())
+    rerouteAttemptedRef.current = false
+    setRerouteInProgress(false)
+    setRerouteError('')
+  }
+
   const requestUserLocation = () => {
+    stopNavigation()
     setGpsError('')
     setGpsFix(null)
     setGpsPosition(null)
+    setGpsAccuracy(null)
+    latestReliableGpsRef.current = null
+    latestRouteRef.current = null
     setRouteResult(null)
 
-    if (!navigator.geolocation) {
+    if (!navigator.geolocation?.getCurrentPosition) {
       setGpsError('This browser does not support location services.')
       return
     }
@@ -275,15 +442,25 @@ function CampusMap() {
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
         const position = [coords.latitude, coords.longitude]
-        setGpsPosition({ position, accuracy: coords.accuracy })
         setGpsLoading(false)
+        setGpsAccuracy(coords.accuracy)
 
-        if (!Number.isFinite(coords.accuracy) || coords.accuracy > MAX_GPS_ACCURACY_METERS) {
+        if (!isReliableGpsReading(coords, MAX_GPS_ACCURACY_METERS)) {
+          setOffRouteState((current) => ({
+            ...current,
+            reliable: false,
+            distanceMeters: null,
+          }))
           setGpsError(
-            `GPS accuracy is about ${Math.round(coords.accuracy)} m, which is too imprecise. Move to a clearer location and try again (required accuracy: ${MAX_GPS_ACCURACY_METERS} m or better).`,
+            `GPS accuracy is ${
+              Number.isFinite(coords.accuracy)
+                ? `about ${Math.round(coords.accuracy)} m`
+                : 'unavailable'
+            }, which is too imprecise. Move to a clearer location and try again (required accuracy: ${MAX_GPS_ACCURACY_METERS} m or better).`,
           )
           return
         }
+        setGpsPosition({ position, accuracy: coords.accuracy })
 
         if (!graph) {
           setGpsError('The campus walking network is not ready yet. Please try again shortly.')
@@ -311,41 +488,264 @@ function CampusMap() {
       },
       (error) => {
         setGpsLoading(false)
-        const messages = {
-          1: 'Location permission was denied. Allow location access in your browser settings, then try again.',
-          2: 'Your current location is unavailable. Check your device location settings and try again.',
-          3: 'The location request timed out. Try again where GPS reception is clearer.',
-        }
-        setGpsError(messages[error.code] ?? 'Your current location could not be determined.')
+        setGpsError(getGpsTrackingErrorMessage(error.code))
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+      createGpsWatchOptions(GPS_WATCH_TIMEOUT_MS),
     )
+  }
+
+  const attemptReroute = (position, accuracyMeters) => {
+    if (rerouteCoordinatorRef.current.inProgress) return
+
+    const navigationSession = navigationSessionRef.current
+    const currentRoute = latestRouteRef.current
+    const destinationLocationId =
+      currentRoute?.destinationLocationId ?? latestDestinationIdRef.current
+    const destinationNodeId =
+      currentRoute?.destinationNodeId ??
+      graph?.resolveLocationNode(destinationLocationId)
+
+    setRerouteError('')
+    setRouteUpdatedMessage('')
+    setRerouteInProgress(true)
+    rerouteCoordinatorRef.current
+      .run(() =>
+        calculateReroute({
+          graph,
+          position,
+          accuracyMeters,
+          destinationNodeId,
+          destinationLocationId,
+          maximumAccuracyMeters: MAX_GPS_ACCURACY_METERS,
+          maximumNetworkDistanceMeters: MAX_GPS_NETWORK_DISTANCE_METERS,
+          offRouteDetector: offRouteDetectorRef.current,
+        }),
+      )
+      .then((result) => {
+        if (
+          navigationSession !== navigationSessionRef.current ||
+          !gpsWatchActiveRef.current
+        ) {
+          return
+        }
+        if (result.status === 'in-progress') return
+        if (result.status !== 'success') {
+          setRerouteError(result.message)
+          return
+        }
+
+        latestRouteRef.current = result.route
+        setRouteResult(result.route)
+        setGpsPosition({
+          position: [...position],
+          accuracy: accuracyMeters,
+        })
+        setOffRouteState(offRouteDetectorRef.current.reset())
+        rerouteAttemptedRef.current = false
+        setRerouteError('')
+        setRouteUpdatedMessage('Route updated. Follow the new directions.')
+      })
+      .catch((error) => {
+        if (
+          navigationSession !== navigationSessionRef.current ||
+          !gpsWatchActiveRef.current
+        ) {
+          return
+        }
+        setRerouteError(
+          `Rerouting failed: ${
+            error instanceof Error ? error.message : 'unknown routing error'
+          }`,
+        )
+      })
+      .finally(() => setRerouteInProgress(false))
+  }
+
+  const startNavigation = () => {
+    if (
+      isNavigating ||
+      gpsWatchActiveRef.current ||
+      routeResult?.status !== 'found'
+    ) {
+      return
+    }
+
+    if (!navigator.geolocation?.watchPosition) {
+      setGpsError('This browser does not support continuous location tracking.')
+      return
+    }
+
+    setGpsError('')
+    gpsWatchActiveRef.current = true
+    navigationSessionRef.current += 1
+    setIsNavigating(true)
+    setIsFollowingUser(true)
+    setOffRouteState(offRouteDetectorRef.current.reset())
+    setArrivalState(arrivalDetectorRef.current.reset())
+
+    try {
+      gpsWatchIdRef.current = navigator.geolocation.watchPosition(
+        ({ coords }) => {
+          if (!gpsWatchActiveRef.current) return
+          setGpsAccuracy(coords.accuracy)
+          if (!isReliableGpsReading(coords, MAX_GPS_ACCURACY_METERS)) {
+            setArrivalState((current) => ({
+              ...current,
+              reliable: false,
+              distanceMeters: null,
+            }))
+            setOffRouteState((current) => ({
+              ...current,
+              reliable: false,
+              distanceMeters: null,
+            }))
+            setGpsError(
+              `Latest GPS accuracy is ${
+                Number.isFinite(coords.accuracy)
+                  ? `about ${Math.round(coords.accuracy)} m`
+                  : 'unavailable'
+              }. This reading is not being used to update your reliable map position (maximum accepted accuracy: ${MAX_GPS_ACCURACY_METERS} m).`,
+            )
+            return
+          }
+
+          const position = [coords.latitude, coords.longitude]
+          latestReliableGpsRef.current = {
+            position,
+            accuracy: coords.accuracy,
+          }
+          setGpsPosition({ position, accuracy: coords.accuracy })
+          const currentRoute = latestRouteRef.current
+          const currentDestinationId =
+              currentRoute?.destinationLocationId ??
+              latestDestinationIdRef.current
+          const destinationPosition = campusLocations.find(
+              (location) => location.id === currentDestinationId,
+          )?.position
+          const detectionResults = updateNavigationDetectors({
+              arrivalDetector: arrivalDetectorRef.current,
+              offRouteDetector: offRouteDetectorRef.current,
+              position,
+              accuracyMeters: coords.accuracy,
+              destinationPosition,
+              routeCoordinates: currentRoute?.routeCoordinates,
+              maximumAccuracyMeters: MAX_GPS_ACCURACY_METERS,
+          })
+          setArrivalState(detectionResults.arrival)
+          if (detectionResults.arrival.arrived) {
+              finishNavigationOnArrival()
+              return
+          }
+
+          const nextOffRouteState = detectionResults.offRoute
+          setOffRouteState(nextOffRouteState)
+          if (nextOffRouteState.status === 'on-route') {
+            rerouteAttemptedRef.current = false
+            setRerouteError('')
+          } else if (
+            nextOffRouteState.status === 'off-route' &&
+            !rerouteAttemptedRef.current
+          ) {
+            rerouteAttemptedRef.current = true
+            attemptReroute(position, coords.accuracy)
+          }
+          const nearestNode = graph
+            ? findNearestWalkingNode(graph, position)
+            : null
+          if (
+            nearestNode &&
+            nearestNode.distanceMeters > MAX_GPS_NETWORK_DISTANCE_METERS
+          ) {
+            setGpsError(
+              `Your accurate GPS position is ${formatDistance(nearestNode.distanceMeters)} from the nearest mapped walking point. It is not being snapped to the network; your calculated route has not changed.`,
+            )
+            return
+          }
+
+          setGpsError('')
+        },
+        (error) => {
+          if (!gpsWatchActiveRef.current) return
+          setArrivalState((current) => ({
+            ...current,
+            reliable: false,
+            distanceMeters: null,
+          }))
+          setOffRouteState((current) => ({
+            ...current,
+            reliable: false,
+            distanceMeters: null,
+          }))
+          setGpsError(getGpsTrackingErrorMessage(error.code))
+          if (error.code === 1) stopNavigation()
+        },
+        createGpsWatchOptions(GPS_WATCH_TIMEOUT_MS),
+      )
+    } catch (error) {
+      gpsWatchActiveRef.current = false
+      gpsWatchIdRef.current = null
+      setIsNavigating(false)
+      setGpsError(
+        `Continuous location tracking could not start: ${
+          error instanceof Error ? error.message : 'unknown geolocation error'
+        }`,
+      )
+    }
   }
 
   const findRoute = () => {
     if (!graph || !gpsFix || !routeDestinationId) return
 
+    setOffRouteState(offRouteDetectorRef.current.reset())
+    setArrivalState(arrivalDetectorRef.current.reset())
+    rerouteAttemptedRef.current = false
+    setRerouteError('')
+    setRouteUpdatedMessage('')
     const destinationNodeId = graph.resolveLocationNode(routeDestinationId)
     const networkRoute = findShortestPath(graph, gpsFix.nearestNode.nodeId, destinationNodeId)
     if (networkRoute.status !== 'found' && networkRoute.status !== 'same-node') {
+      latestRouteRef.current = networkRoute
       setRouteResult(networkRoute)
       return
     }
 
-    setRouteResult({
+    const route = {
       ...networkRoute,
       status: 'found',
       routeCoordinates: [gpsFix.position, ...networkRoute.routeCoordinates],
       totalDistanceMeters:
         networkRoute.totalDistanceMeters + gpsFix.nearestNode.distanceMeters,
       gpsSnapDistanceMeters: gpsFix.nearestNode.distanceMeters,
-    })
+      destinationNodeId,
+      destinationLocationId: routeDestinationId,
+    }
+    latestRouteRef.current = route
+    setRouteResult(route)
   }
 
   const handleDestinationSelection = (event) => {
-    setRouteDestinationId(event.target.value)
+    stopNavigation()
+    const destinationId = event.target.value
+    latestDestinationIdRef.current = destinationId
+    latestRouteRef.current = null
+    setRouteDestinationId(destinationId)
     setRouteResult(null)
+    setArrivalState(arrivalDetectorRef.current.reset())
+    setRerouteError('')
+    setRouteUpdatedMessage('')
   }
+
+  const retryReroute = () => {
+    const latestFix = latestReliableGpsRef.current
+    if (!latestFix || latestFix.accuracy > MAX_GPS_ACCURACY_METERS) return
+
+    rerouteAttemptedRef.current = true
+    attemptReroute(latestFix.position, latestFix.accuracy)
+  }
+
+  const handleManualMapPan = () => setIsFollowingUser(false)
+
+  const recenterOnUser = () => setIsFollowingUser(true)
 
   const formatDistance = (distanceMeters) =>
     distanceMeters >= 1000
@@ -482,7 +882,12 @@ function CampusMap() {
           </label>
           <button
             className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700 transition hover:border-blue-200 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={gpsLoading || walkingPathsLoading || walkingPathsError}
+            disabled={
+              gpsLoading ||
+              isNavigating ||
+              walkingPathsLoading ||
+              walkingPathsError
+            }
             onClick={requestUserLocation}
             type="button"
           >
@@ -491,7 +896,9 @@ function CampusMap() {
           </button>
           <button
             className="h-10 rounded-xl bg-blue-600 px-4 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-            disabled={!gpsFix || !routeDestinationId || gpsLoading}
+            disabled={
+              !gpsFix || !routeDestinationId || gpsLoading || isNavigating
+            }
             onClick={findRoute}
             type="button"
           >
@@ -525,6 +932,122 @@ function CampusMap() {
             <p className="text-xs font-semibold text-violet-900">
               Walking distance: {formatDistance(routeResult.totalDistanceMeters)}
             </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {arrivalState.arrived ? (
+                <span className="text-xs font-semibold text-emerald-800">
+                  Navigation complete
+                </span>
+              ) : !isNavigating ? (
+                <button
+                  className="h-9 rounded-lg bg-violet-700 px-3 text-xs font-semibold text-white transition hover:bg-violet-800"
+                  onClick={startNavigation}
+                  type="button"
+                >
+                  Start Navigation
+                </button>
+              ) : (
+                <>
+                  <button
+                    className="h-9 rounded-lg border border-rose-200 bg-white px-3 text-xs font-semibold text-rose-700 transition hover:bg-rose-50"
+                    onClick={stopNavigation}
+                    type="button"
+                  >
+                    Stop Navigation
+                  </button>
+                  {!isFollowingUser && (
+                    <button
+                      className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                      onClick={recenterOnUser}
+                      type="button"
+                    >
+                      <Crosshair size={14} />
+                      Recenter
+                    </button>
+                  )}
+                  <span className="text-[11px] text-slate-600">
+                    {gpsAccuracy === null
+                      ? 'Waiting for GPS accuracy…'
+                      : Number.isFinite(gpsAccuracy)
+                        ? `Latest GPS accuracy: about ${Math.round(gpsAccuracy)} m`
+                        : 'Latest GPS accuracy is unavailable'}
+                  </span>
+                </>
+              )}
+            </div>
+            {arrivalState.arrived && (
+              <p
+                className="mt-3 rounded-lg bg-emerald-100 px-3 py-2 text-xs font-semibold text-emerald-900"
+                role="status"
+              >
+                You have arrived at your destination!
+              </p>
+            )}
+            {isNavigating && (
+              <div
+                aria-live="polite"
+                className={`mt-3 rounded-lg px-3 py-2 text-[11px] font-medium ${
+                  offRouteState.status === 'off-route' && offRouteState.reliable
+                    ? 'bg-amber-100 text-amber-900'
+                    : offRouteState.status === 'on-route' && offRouteState.reliable
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-slate-100 text-slate-700'
+                }`}
+                role="status"
+              >
+                {!offRouteState.reliable ? (
+                  gpsAccuracy !== null &&
+                  (!Number.isFinite(gpsAccuracy) ||
+                    gpsAccuracy > MAX_GPS_ACCURACY_METERS) ? (
+                    <>Checking location — GPS accuracy insufficient or unavailable (maximum accepted accuracy: {MAX_GPS_ACCURACY_METERS} m).</>
+                  ) : (
+                    <>Checking location… waiting for a reliable GPS reading.</>
+                  )
+                ) : offRouteState.status === 'off-route' ? (
+                  <>
+                    <span className="block font-semibold">
+                      You appear to have moved away from your planned route.
+                    </span>
+                    <span className="mt-0.5 block">
+                      About {formatDistance(offRouteState.distanceMeters)} from the planned route.
+                    </span>
+                  </>
+                ) : offRouteState.status === 'checking' ? (
+                  <>Checking location… confirming whether the position is off route.</>
+                ) : (
+                  <>
+                    On route
+                    {Number.isFinite(offRouteState.distanceMeters) &&
+                      ` · ${formatDistance(offRouteState.distanceMeters)} from planned route`}
+                  </>
+                )}
+              </div>
+            )}
+            {routeUpdatedMessage && (
+              <p
+                className="mt-2 text-[11px] font-semibold text-emerald-800"
+                role="status"
+              >
+                {routeUpdatedMessage}
+              </p>
+            )}
+            {rerouteError && (
+              <div className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-[11px] text-rose-800" role="alert">
+                <p>{rerouteError}</p>
+                <button
+                  className="mt-2 h-8 rounded-md border border-rose-200 bg-white px-2.5 font-semibold text-rose-800 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={
+                    rerouteInProgress ||
+                    !isNavigating ||
+                    !gpsPosition ||
+                    gpsPosition.accuracy > MAX_GPS_ACCURACY_METERS
+                  }
+                  onClick={retryReroute}
+                  type="button"
+                >
+                  {rerouteInProgress ? 'Updating Route…' : 'Try Rerouting Again'}
+                </button>
+              </div>
+            )}
             {routeResult.usesProvisionalConnections && (
               <p className="mt-1.5 text-[11px] leading-relaxed text-amber-800">
                 This route uses approximate building connections that have not been verified as accessible paths.
@@ -533,6 +1056,55 @@ function CampusMap() {
             <p className="mt-1.5 text-[11px] leading-relaxed text-amber-800">
               The GPS start is joined to the mapped network with a {formatDistance(routeResult.gpsSnapDistanceMeters)} straight-line connection. This segment is approximate and may not follow a physical path.
             </p>
+            <p className="mt-3 text-[10px] leading-relaxed text-slate-500">
+              Instructions are approximate and based on mapped route geometry; verify the path as you walk.
+            </p>
+            {navigationInstructions.length > 0 && (
+              <ol aria-label="Walking instructions" className="mt-3 space-y-2">
+                {navigationInstructions.map((instruction, index) => {
+                  const DirectionIcon = {
+                    continue: ArrowUp,
+                    'bear-left': ArrowUpLeft,
+                    'turn-left': CornerUpLeft,
+                    'bear-right': ArrowUpRight,
+                    'turn-right': CornerUpRight,
+                    'u-turn': RotateCcw,
+                    'provisional-connection': AlertTriangle,
+                    'gps-snap': AlertTriangle,
+                    arrival: MapPin,
+                  }[instruction.type]
+                  const isArrival = instruction.type === 'arrival'
+
+                  return (
+                    <li
+                      key={`${instruction.type}-${index}`}
+                      className="flex items-start gap-2 rounded-lg bg-white/80 px-2.5 py-2 text-[11px] text-slate-700"
+                    >
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-100 text-[10px] font-bold text-violet-800">
+                        {index + 1}
+                      </span>
+                      <DirectionIcon
+                        aria-hidden="true"
+                        className={`mt-0.5 shrink-0 ${
+                          instruction.type.includes('provisional') || instruction.type === 'gps-snap'
+                            ? 'text-amber-600'
+                            : 'text-violet-700'
+                        }`}
+                        size={15}
+                      />
+                      <span className="min-w-0 flex-1 leading-relaxed">
+                        {instruction.text}
+                      </span>
+                      {!isArrival && (
+                        <span className="shrink-0 font-semibold text-slate-500">
+                          {formatDistance(instruction.distanceMeters)}
+                        </span>
+                      )}
+                    </li>
+                  )
+                })}
+              </ol>
+            )}
           </div>
         )}
         {routeResult?.status === 'no-route' && (
@@ -594,6 +1166,9 @@ function CampusMap() {
           <UserLocationMarker
             position={gpsPosition?.position}
             accuracy={gpsPosition?.accuracy ?? 0}
+            isTracking={isNavigating}
+            isFollowing={isFollowingUser}
+            onManualPan={handleManualMapPan}
           />
           {mappableLocations.map((location) => (
             <CampusLocationMarker
