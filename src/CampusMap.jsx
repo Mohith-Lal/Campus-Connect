@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { LocateFixed, MapPin, Search } from 'lucide-react'
+import {
+  Compass,
+  LocateFixed,
+  MapPin,
+  Navigation,
+  Route,
+  Search,
+  Sparkles,
+} from 'lucide-react'
 import {
   CircleMarker,
   GeoJSON,
@@ -67,14 +75,14 @@ function WalkingPathsLayer({ geoJson, loading, error }) {
           style={(feature) => ({
             color: feature?.properties?.access === 'private' ? '#dc2626' : '#2563eb',
             weight: 5,
-            opacity: 0.95,
+            opacity: 0.9,
           })}
         />
       )}
       {(loading || error) && (
         <div
           aria-live="polite"
-          className="pointer-events-none absolute bottom-3 right-3 z-[1000] rounded-lg border border-slate-200/80 bg-white/95 px-3 py-2 text-[10px] font-medium text-slate-500 shadow-sm backdrop-blur-sm"
+          className="pointer-events-none absolute bottom-3 right-3 z-[1000] rounded-xl border border-slate-200/80 bg-white/95 px-3 py-2 text-[11px] font-medium text-slate-600 shadow-md backdrop-blur-md dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-300"
           role="status"
         >
           {loading ? 'Loading walking paths…' : 'Walking paths could not be loaded.'}
@@ -151,18 +159,18 @@ function CampusLocationMarker({ location, selected }) {
     <CircleMarker
       ref={markerRef}
       center={location.position}
-      radius={9}
+      radius={selected ? 12 : 9}
       pathOptions={{
         color: '#ffffff',
         weight: 3,
-        fillColor: '#2563eb',
+        fillColor: selected ? '#f59e0b' : '#2563eb',
         fillOpacity: 1,
       }}
     >
       <Popup>
-        <div className="min-w-[180px]">
+        <div className="min-w-[190px]">
           <h2 className="text-sm font-bold text-slate-900">{location.name}</h2>
-          <span className="mt-1 inline-block rounded-full bg-blue-50 px-2 py-1 text-[10px] font-semibold text-blue-700">
+          <span className="mt-1 inline-block rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-semibold text-brand-700">
             {location.category}
           </span>
           <p className="mt-2 text-xs leading-relaxed text-slate-600">
@@ -174,21 +182,22 @@ function CampusLocationMarker({ location, selected }) {
   )
 }
 
-function CampusMap() {
+function CampusMap({ initialLocationId = null, isGuestMode = false, darkMode = false }) {
   const [searchTerm, setSearchTerm] = useState('')
   const [activeCategory, setActiveCategory] = useState(null)
   const [isSearchFocused, setIsSearchFocused] = useState(false)
-  const [selectedLocationId, setSelectedLocationId] = useState(null)
+  const [selectedLocationId, setSelectedLocationId] = useState(initialLocationId)
   const [walkingPaths, setWalkingPaths] = useState(null)
   const [walkingPathsLoading, setWalkingPathsLoading] = useState(true)
   const [walkingPathsError, setWalkingPathsError] = useState(false)
-  const [routeDestinationId, setRouteDestinationId] = useState('')
+  const [routeDestinationId, setRouteDestinationId] = useState(initialLocationId ?? '')
   const [routeResult, setRouteResult] = useState(null)
   const [gpsPosition, setGpsPosition] = useState(null)
   const [gpsFix, setGpsFix] = useState(null)
   const [gpsLoading, setGpsLoading] = useState(false)
   const [gpsError, setGpsError] = useState('')
   const searchContainerRef = useRef(null)
+
   const graph = useMemo(
     () => (walkingPaths ? buildWalkingGraph(walkingPaths, campusLocations) : null),
     [walkingPaths],
@@ -256,6 +265,7 @@ function CampusMap() {
 
   const selectLocation = (location) => {
     setSelectedLocationId(location.id)
+    setRouteDestinationId(location.id)
     setSearchTerm(location.name)
     setIsSearchFocused(false)
   }
@@ -353,20 +363,103 @@ function CampusMap() {
       : `${Math.round(distanceMeters)} m`
 
   return (
-    <section>
-      <div className="mb-6">
-        <p className="mb-2 text-[11px] font-semibold text-slate-400">
-          EXPLORE YOUR SURROUNDINGS
-        </p>
-        <h1 className="text-[27px] font-bold tracking-[-0.04em] text-slate-900 sm:text-[30px]">
-          Campus Map
-        </h1>
-        <p className="mt-2 max-w-xl text-[13px] leading-relaxed text-slate-500">
-          Explore the area around BMS Institute of Technology and Management.
-        </p>
+    <section className="animate-fade-up space-y-5">
+      {/* Enhanced Guest Mode Banner with Next-Level Animated Styles */}
+      {isGuestMode && (
+        <div className="relative overflow-hidden rounded-3xl border-2 border-brand-500/40 bg-linear-to-r from-brand-600/15 via-indigo-600/10 to-amber-500/15 p-5 backdrop-blur-xl shadow-xl dark:border-brand-400/30 dark:bg-slate-900/90">
+          <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-brand-500/15 blur-3xl" />
+          <div className="pointer-events-none absolute -left-16 -bottom-16 h-48 w-48 rounded-full bg-indigo-500/15 blur-3xl" />
+
+          <div className="relative z-10 flex flex-col gap-4">
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-linear-to-tr from-brand-600 via-indigo-600 to-amber-500 text-white shadow-lg shadow-brand-500/30">
+                  <span className="absolute -inset-1 rounded-2xl bg-linear-to-r from-brand-500 via-indigo-500 to-amber-500 opacity-40 blur-xs animate-pulse" />
+                  <Compass size={24} className="relative z-10 animate-spin-slow" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-display text-base font-extrabold text-slate-950 dark:text-white">
+                      Campus Explorer Mode
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800 dark:text-emerald-300">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Guest Navigator Active
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Welcome to BMSIT&amp;M! Click any campus landmark below to focus the map, view departments, and navigate:
+                  </p>
+                </div>
+              </div>
+
+              {/* Quick Visitor Information Pill */}
+              <div className="flex items-center gap-2 rounded-2xl border border-brand-200/80 bg-white/90 px-3.5 py-1.5 text-xs font-bold text-brand-700 shadow-xs dark:border-brand-500/30 dark:bg-slate-800 dark:text-brand-300">
+                <Sparkles size={14} className="text-amber-500 animate-pulse" />
+                <span>Public Visitor Access · GPS Turn-by-Turn</span>
+              </div>
+            </div>
+
+            {/* Quick-Jump Landmark Chips for Guest with active indicator */}
+            <div className="flex flex-wrap gap-2 pt-1 border-t border-brand-500/20 dark:border-slate-800">
+              {[
+                { label: 'Auditorium & Placement', id: 'silver-jubilee-block' },
+                { label: 'B.S. Narayan CSE Wing', id: 'b-s-narayan-block' },
+                { label: 'Sir C.V. Raman Labs', id: 'sir-c-v-raman-block' },
+                { label: 'Central Library Pods', id: 'central-library' },
+                { label: 'Kaapi Kuteera Cafe', id: 'kaapi-kuteera' },
+                { label: 'BMSSA Architecture', id: 'bmssa-block-1' },
+                { label: 'Playground & Sports Arena', id: 'playground' },
+              ].map((dest) => {
+                const targetLoc = campusLocations.find((l) => l.id === dest.id)
+                const isSelected = selectedLocationId === dest.id
+                return (
+                  <button
+                    key={dest.id}
+                    onClick={() => {
+                      if (targetLoc) selectLocation(targetLoc)
+                    }}
+                    type="button"
+                    className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition-all active:scale-95 ${
+                      isSelected
+                        ? 'border-brand-600 bg-brand-600 text-white shadow-md shadow-brand-500/30'
+                        : 'border-slate-300 bg-white text-slate-900 shadow-2xs hover:border-brand-600 hover:bg-brand-50 hover:text-brand-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-brand-400 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    <MapPin size={13} className={isSelected ? 'text-amber-300' : 'text-brand-600 dark:text-brand-400'} />
+                    <span>{dest.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Header Banner */}
+      <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200/70 bg-white p-4.5 sm:p-6 lg:p-7 shadow-sm dark:border-slate-800 dark:bg-slate-900/90">
+        <div className="pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full bg-brand-500/10 blur-2xl" />
+        <div className="flex flex-wrap items-end justify-between gap-3 sm:gap-4">
+          <div>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 sm:px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
+              <Compass size={12} /> Interactive Wayfinding
+            </span>
+            <h1 className="mt-2 sm:mt-3 text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+              Campus Map &amp; Walking Navigator
+            </h1>
+            <p className="mt-1 sm:mt-1.5 max-w-2xl text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+              Explore BMS Institute of Technology &amp; Management — search academic blocks, courts, and hangout spots or calculate live GPS walking routes.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 rounded-xl sm:rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-1.5 sm:px-3.5 sm:py-2 text-[11px] sm:text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-300">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-mint-500" />
+            {mappableLocations.length} Mapped Locations
+          </div>
+        </div>
       </div>
 
-      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+      {/* Search + Categories */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="relative z-[1001] w-full lg:max-w-md" ref={searchContainerRef}>
           <label className="relative block">
             <Search
@@ -378,13 +471,13 @@ function CampusMap() {
               aria-label="Search the campus map"
               aria-expanded={showSearchResults}
               aria-controls="campus-location-results"
-              className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-xs text-slate-700 shadow-sm shadow-slate-100 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+              className="h-11 w-full rounded-2xl border border-slate-200 bg-white pl-10 pr-4 text-xs text-slate-800 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-brand-400 focus:ring-4 focus:ring-brand-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               onChange={(event) => {
                 setSearchTerm(event.target.value)
                 setSelectedLocationId(null)
               }}
               onFocus={() => setIsSearchFocused(true)}
-              placeholder="Search places on campus..."
+              placeholder="Search auditorium, department cells, blocks, Kaapi Kuteera..."
               role="combobox"
               type="search"
               value={searchTerm}
@@ -392,7 +485,7 @@ function CampusMap() {
           </label>
           {showSearchResults && (
             <div
-              className="mt-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg shadow-slate-200/70"
+              className="mt-1.5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900"
               id="campus-location-results"
               role="listbox"
             >
@@ -400,24 +493,38 @@ function CampusMap() {
                 matchingLocations.map((location) => (
                   <button
                     key={location.id}
-                    className="flex w-full items-start gap-3 border-b border-slate-100 px-4 py-3 text-left transition last:border-b-0 hover:bg-blue-50/70"
+                    className="flex w-full items-start gap-3 border-b border-slate-100 px-4 py-3.5 text-left transition last:border-b-0 hover:bg-brand-50/80 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800"
                     onClick={() => selectLocation(location)}
                     role="option"
                     type="button"
                   >
-                    <MapPin size={15} className="mt-0.5 shrink-0 text-blue-600" />
-                    <span className="min-w-0">
-                      <span className="block truncate text-xs font-semibold text-slate-800">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/20 dark:text-brand-300">
+                      <MapPin size={16} />
+                    </div>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-xs font-bold text-slate-900 dark:text-white">
                         {location.name}
                       </span>
-                      <span className="mt-1 block text-[10px] text-slate-400">
-                        {location.category} · {location.description}
+                      <span className="mt-0.5 block truncate text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                        {location.description}
                       </span>
+                      {location.facilities?.length > 0 && (
+                        <span className="mt-1 flex flex-wrap gap-1">
+                          {location.facilities.map((fac) => (
+                            <span
+                              key={fac}
+                              className="rounded-md border border-slate-200 bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                            >
+                              {fac}
+                            </span>
+                          ))}
+                        </span>
+                      )}
                     </span>
                   </button>
                 ))
               ) : (
-                <p className="px-4 py-4 text-xs text-slate-500" role="status">
+                <p className="px-4 py-4 text-xs font-medium text-slate-600 dark:text-slate-300" role="status">
                   No campus locations match “{searchTerm}”.
                 </p>
               )}
@@ -425,192 +532,250 @@ function CampusMap() {
           )}
         </div>
 
-        <button
-          className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-600 shadow-sm shadow-slate-100 transition hover:border-blue-200 hover:text-blue-700"
-          type="button"
-        >
-          <LocateFixed size={16} />
-          Locate me
-        </button>
-      </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {categories.map((category) => {
+            const isActive = activeCategory === category
 
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <span className="mr-1 text-[11px] font-semibold text-slate-500">Categories</span>
-        {categories.map((category) => {
-          const isActive = activeCategory === category
-
-          return (
-            <button
-              key={category}
-              aria-pressed={isActive}
-              className={`rounded-full border px-3 py-1.5 text-[10px] font-semibold transition ${
-                isActive
-                  ? 'border-blue-200 bg-blue-50 text-blue-700'
-                  : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
-              }`}
-              onClick={() => toggleCategory(category)}
-              type="button"
-            >
-              {category}
-            </button>
-          )
-        })}
-      </div>
-
-      <section className="mb-5 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm shadow-slate-100/60 sm:p-5">
-        <div className="mb-4">
-          <h2 className="text-sm font-bold text-slate-900">Walking directions</h2>
-          <p className="mt-1 text-[11px] text-slate-500">
-            Use your current location to find a route to a connected campus destination.
-          </p>
+            return (
+              <button
+                key={category}
+                aria-pressed={isActive}
+                className={`rounded-full border px-3.5 py-1.5 text-[11px] font-semibold transition ${
+                  isActive
+                    ? 'border-brand-500 bg-brand-600 text-white shadow-sm shadow-brand-500/25'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-brand-300 hover:text-brand-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-brand-500'
+                }`}
+                onClick={() => toggleCategory(category)}
+                type="button"
+              >
+                {category}
+              </button>
+            )
+          })}
         </div>
+      </div>
+
+      {/* Walking Directions Panel */}
+      <section className="rounded-3xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/90">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-iris-50 text-iris-600 dark:bg-iris-500/15 dark:text-iris-300">
+              <Route size={18} />
+            </span>
+            <div>
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white">Walking Directions</h2>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Pin your live GPS location and compute the shortest pedestrian path across campus.
+              </p>
+            </div>
+          </div>
+          {routeResult?.status === 'found' && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-mint-50 px-3 py-1 text-[11px] font-semibold text-mint-700 dark:bg-mint-500/15 dark:text-mint-300">
+              <Sparkles size={12} /> Route Active
+            </span>
+          )}
+        </div>
+
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto] lg:items-end">
-          <label className="block text-[11px] font-semibold text-slate-600">
+          <label className="block text-[11px] font-bold text-slate-800 dark:text-slate-300">
             Destination
             <select
-              className="mt-1.5 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-normal text-slate-700 outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+              className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-900 outline-none transition shadow-xs focus:border-brand-600 focus:bg-white focus:ring-4 focus:ring-brand-500/15 [color-scheme:light] dark:[color-scheme:dark] dark:border-slate-700 dark:bg-slate-900 dark:text-white"
               onChange={handleDestinationSelection}
               value={routeDestinationId}
             >
-              <option value="">Select a destination</option>
+              <option
+                value=""
+                style={{ backgroundColor: darkMode ? '#0f172a' : '#ffffff', color: darkMode ? '#f8fafc' : '#0f172a' }}
+                className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white font-medium"
+              >
+                Select a campus destination
+              </option>
               {routeLocations.map((location) => (
-                <option key={location.id} value={location.id}>
+                <option
+                  key={location.id}
+                  value={location.id}
+                  style={{ backgroundColor: darkMode ? '#0f172a' : '#ffffff', color: darkMode ? '#f8fafc' : '#0f172a' }}
+                  className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white font-medium"
+                >
                   {location.name}
                 </option>
               ))}
             </select>
           </label>
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700 transition hover:border-blue-200 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700 transition hover:border-brand-300 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-brand-500"
             disabled={gpsLoading || walkingPathsLoading || walkingPathsError}
             onClick={requestUserLocation}
             type="button"
           >
             <LocateFixed size={15} />
-            {gpsLoading ? 'Getting Location…' : 'Use My Location'}
+            {gpsLoading ? 'Locating…' : 'Use My Location'}
           </button>
           <button
-            className="h-10 rounded-xl bg-blue-600 px-4 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 text-xs font-semibold text-white shadow-sm shadow-brand-600/25 transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none dark:disabled:bg-slate-700"
             disabled={!gpsFix || !routeDestinationId || gpsLoading}
             onClick={findRoute}
             type="button"
           >
+            <Navigation size={14} />
             Find Route
           </button>
         </div>
+
         {walkingPathsLoading && (
           <p className="mt-3 text-[11px] text-slate-400" role="status">
-            Preparing the walking network…
+            Preparing the campus walking network…
           </p>
         )}
         {walkingPathsError && (
-          <p className="mt-3 text-[11px] text-rose-600" role="alert">
+          <p className="mt-3 text-[11px] text-rose-600 dark:text-rose-400" role="alert">
             The walking network could not be loaded. Please try again later.
           </p>
         )}
         {gpsError && (
-          <p className="mt-3 text-[11px] text-rose-600" role="alert">
+          <p className="mt-3 text-[11px] text-rose-600 dark:text-rose-400" role="alert">
             {gpsError}
           </p>
         )}
         {gpsFix && !routeResult && (
-          <p className="mt-3 text-[11px] text-slate-500" role="status">
+          <p className="mt-3 text-[11px] text-slate-500 dark:text-slate-400" role="status">
             Location ready (accuracy about {Math.round(gpsFix.accuracy)} m). Nearest walking-network point is{' '}
             {formatDistance(gpsFix.nearestNode.distanceMeters)} away.
-            {!routeDestinationId && ' Select a destination, then find a route.'}
+            {!routeDestinationId && ' Select a destination, then click Find Route.'}
           </p>
         )}
         {routeResult?.status === 'found' && (
-          <div className="mt-4 rounded-xl bg-violet-50 px-3.5 py-3">
-            <p className="text-xs font-semibold text-violet-900">
-              Walking distance: {formatDistance(routeResult.totalDistanceMeters)}
+          <div className="mt-4 rounded-2xl border border-iris-200/80 bg-iris-50/90 px-4 py-3 dark:border-iris-500/30 dark:bg-iris-500/10">
+            <p className="text-xs font-bold text-iris-900 dark:text-iris-200">
+              Total walking distance: {formatDistance(routeResult.totalDistanceMeters)}
             </p>
             {routeResult.usesProvisionalConnections && (
-              <p className="mt-1.5 text-[11px] leading-relaxed text-amber-800">
+              <p className="mt-1 text-[11px] leading-relaxed text-sun-800 dark:text-sun-300">
                 This route uses approximate building connections that have not been verified as accessible paths.
               </p>
             )}
-            <p className="mt-1.5 text-[11px] leading-relaxed text-amber-800">
-              The GPS start is joined to the mapped network with a {formatDistance(routeResult.gpsSnapDistanceMeters)} straight-line connection. This segment is approximate and may not follow a physical path.
+            <p className="mt-1 text-[11px] leading-relaxed text-sun-800 dark:text-sun-300">
+              GPS start is joined to the mapped network with a {formatDistance(routeResult.gpsSnapDistanceMeters)} straight-line connection.
             </p>
           </div>
         )}
         {routeResult?.status === 'no-route' && (
-          <p className="mt-3 text-[11px] text-amber-700" role="status">
+          <p className="mt-3 text-[11px] text-sun-700 dark:text-sun-400" role="status">
             No walking route is available between these locations in the current network.
           </p>
         )}
         {routeResult?.status === 'same-node' && (
-          <p className="mt-3 text-[11px] text-amber-700" role="status">
+          <p className="mt-3 text-[11px] text-sun-700 dark:text-sun-400" role="status">
             These locations resolve to the same network access point, so no separate route is needed.
           </p>
         )}
         {routeResult &&
           !['found', 'no-route', 'same-node'].includes(routeResult.status) && (
-            <p className="mt-3 text-[11px] text-rose-600" role="alert">
+            <p className="mt-3 text-[11px] text-rose-600 dark:text-rose-400" role="alert">
               The route could not be calculated from the current walking network.
             </p>
           )}
       </section>
 
-      <div className="relative h-[min(62vh,680px)] min-h-[420px] overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-sm shadow-slate-200/50">
-        <MapContainer
-          center={campusCenter}
-          className="h-full w-full"
-          zoom={16}
-          scrollWheelZoom
-        >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <WalkingPathsLayer
-            geoJson={walkingPaths}
-            loading={walkingPathsLoading}
-            error={walkingPathsError}
-          />
-          <FitLocationBounds locations={mappableLocations} />
-          <Pane name="campusConnectionsPane" style={{ zIndex: 375 }}>
-            {mappableLocations.map((location) => {
-              const networkPosition = campusConnections[location.id]
-              if (!networkPosition) return null
+      {/* Map + Quick-Jump Building Strip */}
+      <div className="grid gap-4 xl:grid-cols-[1fr_300px]">
+        <div className="relative h-[min(65vh,640px)] min-h-[360px] sm:min-h-[440px] overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200/90 bg-slate-100 shadow-md dark:border-slate-800 dark:bg-slate-900">
+          <MapContainer
+            center={campusCenter}
+            className="h-full w-full"
+            zoom={16}
+            scrollWheelZoom
+          >
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            <WalkingPathsLayer
+              geoJson={walkingPaths}
+              loading={walkingPathsLoading}
+              error={walkingPathsError}
+            />
+            <FitLocationBounds locations={mappableLocations} />
+            <Pane name="campusConnectionsPane" style={{ zIndex: 375 }}>
+              {mappableLocations.map((location) => {
+                const networkPosition = campusConnections[location.id]
+                if (!networkPosition) return null
 
+                return (
+                  <Polyline
+                    key={location.id}
+                    positions={[location.position, networkPosition]}
+                    pathOptions={{
+                      color: '#f97316',
+                      weight: 3,
+                      opacity: 0.9,
+                      dashArray: '7 7',
+                    }}
+                    interactive={false}
+                  />
+                )
+              })}
+            </Pane>
+            <NavigationRouteLayer route={routeResult} />
+            <UserLocationMarker
+              position={gpsPosition?.position}
+              accuracy={gpsPosition?.accuracy ?? 0}
+            />
+            {mappableLocations.map((location) => (
+              <CampusLocationMarker
+                key={location.id}
+                location={location}
+                selected={location.id === selectedLocationId}
+              />
+            ))}
+          </MapContainer>
+          <div className="pointer-events-none absolute left-3 top-3 z-[1000] flex items-center gap-2 rounded-xl border border-slate-200/80 bg-white/95 px-3 py-2 text-[11px] font-semibold text-slate-700 shadow-md backdrop-blur-md dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-200">
+            <MapPin size={14} className="text-brand-600 dark:text-brand-400" />
+            BMS Institute of Technology &amp; Management
+          </div>
+        </div>
+
+        {/* Quick-Jump Campus Landmarks */}
+        <aside className="flex flex-col rounded-3xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/90">
+          <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
+            Quick Jump
+          </h3>
+          <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+            Tap a landmark to focus &amp; set as route target.
+          </p>
+          <div className="mt-3 flex-1 space-y-2 overflow-y-auto pr-1 max-h-[520px]">
+            {mappableLocations.map((location) => {
+              const isSelected = location.id === selectedLocationId
               return (
-                <Polyline
+                <button
                   key={location.id}
-                  positions={[location.position, networkPosition]}
-                  pathOptions={{
-                    color: '#f97316',
-                    weight: 3,
-                    opacity: 0.9,
-                    dashArray: '7 7',
-                  }}
-                  interactive={false}
-                />
+                  onClick={() => selectLocation(location)}
+                  type="button"
+                  className={`w-full rounded-2xl border p-3 text-left transition ${
+                    isSelected
+                      ? 'border-brand-500 bg-brand-50/80 dark:border-brand-500 dark:bg-brand-500/15'
+                      : 'border-slate-100 bg-slate-50/60 hover:border-slate-300 hover:bg-white dark:border-slate-800 dark:bg-slate-800/50 dark:hover:border-slate-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate text-xs font-bold text-slate-800 dark:text-slate-100">
+                      {location.name}
+                    </span>
+                    <MapPin
+                      size={13}
+                      className={isSelected ? 'text-sun-500' : 'text-slate-400'}
+                    />
+                  </div>
+                  <span className="mt-1 inline-block text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                    {location.category}
+                  </span>
+                </button>
               )
             })}
-          </Pane>
-          <NavigationRouteLayer route={routeResult} />
-          <UserLocationMarker
-            position={gpsPosition?.position}
-            accuracy={gpsPosition?.accuracy ?? 0}
-          />
-          {mappableLocations.map((location) => (
-            <CampusLocationMarker
-              key={location.id}
-              location={location}
-              selected={location.id === selectedLocationId}
-            />
-          ))}
-        </MapContainer>
-        <div className="pointer-events-none absolute left-3 top-3 z-[1000] flex items-center gap-2 rounded-lg border border-slate-200/80 bg-white/95 px-3 py-2 text-[10px] font-medium text-slate-600 shadow-sm backdrop-blur-sm">
-          <MapPin size={13} className="text-blue-600" />
-          BMS Institute of Technology and Management
-        </div>
+          </div>
+        </aside>
       </div>
-      <p className="mt-2 text-[10px] text-slate-400">
-        Map data © OpenStreetMap contributors. Location services are coming soon.
-      </p>
     </section>
   )
 }
